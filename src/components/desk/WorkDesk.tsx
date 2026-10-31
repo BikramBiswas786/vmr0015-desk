@@ -1,6 +1,7 @@
 import { compressPhoto, countsTowardSample, useVisits, type Visit } from "@/lib/desk/field";
 import { FILES, GUARDIAN_URL, POLICY } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
+import { Paper } from "@/components/desk/Paper";
 import { useState } from "react";
 
 const RATE = Number(POLICY.perHouse);
@@ -12,6 +13,7 @@ const ROLES = [
   ["guardian", "Guardian"],
   ["verra", "Verra"],
   ["buyer", "Buyer"],
+  ["paper", "Paper"],
 ] as const;
 
 type Role = (typeof ROLES)[number][0];
@@ -211,7 +213,7 @@ export function WorkDesk() {
         {role === "field" ? (
           <section className="mt-4 space-y-3">
             <p className="text-sm leading-relaxed">
-              The crew at the house takes the photo and writes what they see. The checker, not the crew, accepts a line.
+              Visit a house that boils drinking water with wood. Photograph the filter or the drum that replaces that boiling. Write whether they boil, the fuel, and whether a water test passed. This note is evidence for a Verra VMR0015 file. It is not an Indian carbon-credit certificate. The same house cannot be sold on both markets.
             </p>
             {work.stage !== "open" ? (
               <p className="border border-rule bg-sheet p-3 text-sm">The description is locked. New houses wait until the developer takes it back.</p>
@@ -359,7 +361,9 @@ export function WorkDesk() {
 
         {role === "guardian" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <p>Guardian is the workflow engine. This phone keeps a hash of the locked houses. Posting those houses into a live policy still happens in Guardian, after you import the file.</p>
+            <p>
+              Guardian runs the policy after it is imported there. This file’s mint is the block tagged mint_by_report, and the token packed with the file is a draft named VCU VMR0015. Asking Guardian below only lists policies. It does not mint.
+            </p>
             <p className="border border-rule bg-sheet p-3 break-all">
               {work.chain ? work.chain : "No chain yet. The developer locks the houses first."}
               {work.chain && liveHash ? (chainState === "match" ? " Matches the houses." : chainState === "pending" ? " Checking." : " Does not match the houses now.") : ""}
@@ -395,6 +399,8 @@ export function WorkDesk() {
             <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">VMR0015 on Verra</a>
           </section>
         ) : null}
+
+        {role === "paper" ? <Paper /> : null}
 
         {role === "buyer" ? (
           <section className="mt-4 space-y-3 text-sm">
