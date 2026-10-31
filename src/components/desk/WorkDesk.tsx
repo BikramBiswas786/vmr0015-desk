@@ -1,4 +1,4 @@
-import { compressPhoto, countsTowardSample, useVisits, type Visit } from "@/lib/desk/field";
+import { compressPhoto, countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
 import { FILES, GUARDIAN_URL, POLICY } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
 import { Paper } from "@/components/desk/Paper";
@@ -37,9 +37,14 @@ export function WorkDesk() {
   const [boil, setBoil] = useState<Visit["boil"]>("yes");
   const [fuel, setFuel] = useState<Visit["fuel"]>("wood");
   const [water, setWater] = useState<Visit["water"]>("untested");
+  const [publicPipe, setPublicPipe] = useState<Visit["publicPipe"]>("unknown");
+  const [shape, setShape] = useState<Visit["shape"]>("unset");
+  const [treatment, setTreatment] = useState<Visit["treatment"]>("unknown");
+  const [sealed, setSealed] = useState<Visit["sealed"]>("no");
   const [photo, setPhoto] = useState("");
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
+  const [plant, setPlant] = useState("");
   const [starts, setStarts] = useState("");
   const [setId, setSetId] = useState<"A" | "B">("A");
   const [note, setNote] = useState("");
@@ -78,6 +83,10 @@ export function WorkDesk() {
       boil,
       fuel,
       water,
+      publicPipe,
+      shape,
+      treatment,
+      sealed,
       photo,
       status: "in",
     };
@@ -94,12 +103,14 @@ export function WorkDesk() {
 
   async function lockDescription() {
     const title = name.trim();
-    if (!title || counted.length === 0 || work.stage !== "open") return;
+    const point = plant.trim();
+    if (!title || !point || counted.length === 0 || work.stage !== "open") return;
     const chosen = counted;
     const chain = await chainHash(chosen);
     setWork({
       ...work,
       name: title,
+      plant: point,
       starts,
       setId,
       stage: "described",
@@ -113,7 +124,7 @@ export function WorkDesk() {
   }
 
   function takeBack() {
-    setWork({ ...work, stage: "open", visitIds: [], chain: "", validationNote: "", monitoringNote: "", offers: [] });
+    setWork({ ...work, stage: "open", visitIds: [], chain: "", plant: "", validationNote: "", monitoringNote: "", offers: [] });
     setLiveHash("");
   }
 
@@ -176,13 +187,14 @@ export function WorkDesk() {
   }
 
   const packet = [
-    `${work.name || "Untitled"} — VMR0015 field packet. Not a Verra serial. Not for sale.`,
+    `${work.name || "Untitled"} — VMR0015 project description. Not a Verra serial. Not a BEE certificate. Not for sale.`,
+    work.plant ? `Treatment point: ${work.plant}.` : "No treatment point named.",
     STAGE_LINE[work.stage],
     `Template ${work.setId}. Houses in the lock: ${work.visitIds.length}. Sample ${sampleTonnes} t at ${POLICY.perHouse} t each.`,
     work.chain ? `Chain ${work.chain}` : "No chain yet.",
     chainState === "match" ? "The houses still match that chain." : chainState === "pending" ? "The chain is still being checked." : chainState === "break" ? "The houses do not match the locked chain." : "No chain yet.",
     "",
-    ...locked.map((visit, index) => `${index + 1}. ${visit.house}. Boils with ${visit.fuel}. Water passed. ${visit.takenAt.slice(0, 10)}.`),
+    ...locked.map((visit, index) => `${index + 1}. ${visit.house}. ${visit.shape === "kiosk" ? "Drum from a treatment point" : "Filter in the house"}, ${visit.treatment}. No public safe-water pipe. Boils with ${visit.fuel}. Water passed. ${visit.takenAt.slice(0, 10)}.`),
   ].join("\n");
 
   return (
@@ -213,7 +225,7 @@ export function WorkDesk() {
         {role === "field" ? (
           <section className="mt-4 space-y-3">
             <p className="text-sm leading-relaxed">
-              Visit a house that boils drinking water with wood. Photograph the filter or the drum that replaces that boiling. Write whether they boil, the fuel, and whether a water test passed. This note is evidence for a Verra VMR0015 file. It is not an Indian carbon-credit certificate. The same house cannot be sold on both markets.
+              Visit a house that boils drinking water with wood. Photograph the drum or the filter. A public safe-water pipe already in the lane means this methodology does not apply. A drum counts only if the treatment point uses chlorine, a flocculant powder, or solar, and the drum is sealed or the water still carries disinfectant. This is a Verra note, not an Indian certificate.
             </p>
             {work.stage !== "open" ? (
               <p className="border border-rule bg-sheet p-3 text-sm">The description is locked. New houses wait until the developer takes it back.</p>
@@ -241,6 +253,43 @@ export function WorkDesk() {
                     </select>
                   </label>
                 </div>
+                <label className="block text-sm">
+                  Public safe-water pipe already here?
+                  <select value={publicPipe} onChange={(event) => setPublicPipe(event.target.value as Visit["publicPipe"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
+                    <option value="unknown">Not answered</option>
+                    <option value="no">No</option>
+                    <option value="yes">Yes, so this house cannot count</option>
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  How the safe water arrives
+                  <select value={shape} onChange={(event) => setShape(event.target.value as Visit["shape"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
+                    <option value="unset">Choose</option>
+                    <option value="kiosk">Drum from a treatment point</option>
+                    <option value="house">Filter in the house</option>
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  Treatment
+                  <select value={treatment} onChange={(event) => setTreatment(event.target.value as Visit["treatment"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
+                    <option value="unknown">Choose</option>
+                    <option value="chlorine">Chlorine</option>
+                    <option value="flocculant">Flocculant and disinfectant powder</option>
+                    <option value="solar">Solar disinfection</option>
+                    <option value="membrane">Membrane filter, house only</option>
+                    <option value="ceramic">Ceramic filter, house only</option>
+                    <option value="other">Something else, cannot count</option>
+                  </select>
+                </label>
+                {shape === "kiosk" ? (
+                  <label className="block text-sm">
+                    Drum sealed, or disinfectant still in the water?
+                    <select value={sealed} onChange={(event) => setSealed(event.target.value as Visit["sealed"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
+                      <option value="no">No</option>
+                      <option value="yes">Yes</option>
+                    </select>
+                  </label>
+                ) : null}
                 <label className="block text-sm">
                   Water test
                   <select value={water} onChange={(event) => setWater(event.target.value as Visit["water"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
@@ -273,6 +322,10 @@ export function WorkDesk() {
                   <input value={name} onChange={(event) => setName(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
                 </label>
                 <label className="block">
+                  Treatment point
+                  <input value={plant} onChange={(event) => setPlant(event.target.value)} placeholder="The small plant the drums leave from" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+                </label>
+                <label className="block">
                   Start date
                   <input type="date" value={starts} onChange={(event) => setStarts(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
                 </label>
@@ -283,14 +336,15 @@ export function WorkDesk() {
                     <option value="B">v3.1 B, on or after 1 January 2027</option>
                   </select>
                 </label>
-                <button type="button" disabled={!name.trim() || counted.length === 0} onClick={lockDescription} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+                <button type="button" disabled={!name.trim() || !plant.trim() || counted.length === 0} onClick={lockDescription} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
                   Lock {counted.length} houses
                 </button>
-                {counted.length === 0 ? <p className="text-quiet">Nothing to lock. A house needs a photo, a passed water test, and boiling with wood or charcoal, and the checker must accept it. Switch to Checker.</p> : null}
+                <p className="text-quiet">This description is for VMR0015. India’s offset list has no drinking-water methodology, so it is not a Carbon Credit Certificate.</p>
+                {counted.length === 0 ? <p className="text-quiet">Nothing to lock. A house needs no public safe-water pipe, boiling with wood or charcoal, a passed test, a photo, and an allowed treatment. A drum also needs a seal. The checker must accept it.</p> : null}
               </>
             ) : (
               <>
-                <p className="border border-rule bg-sheet p-3">{work.name}. Template {work.setId}. {work.visitIds.length} houses. Sample {sampleTonnes} t.</p>
+                <p className="border border-rule bg-sheet p-3">{work.name}. {work.plant}. Template {work.setId}. {work.visitIds.length} houses. Sample {sampleTonnes} t. Not issued. Not for sale.</p>
                 {work.stage === "validated" ? (
                   <>
                     <label className="block">
@@ -319,12 +373,14 @@ export function WorkDesk() {
                 <p>Accept a house only when the water test passed. A photo by itself is not enough.</p>
                 {visits.length === 0 ? <p className="text-quiet">No house yet.</p> : null}
                 {visits.map((visit) => {
-                  const canAccept = visit.water === "pass" && visit.photo.length > 0;
+                  const gap = ruleGap(visit);
+                  const canAccept = rulePass(visit);
                   return (
                     <article key={visit.id} className="border border-rule bg-sheet p-3">
                       <img src={visit.photo} alt="" className="mb-2 max-h-36 w-full object-cover" />
                       <p className="font-medium">{visit.house}</p>
-                      <p className="text-quiet">Boil {visit.boil}, {visit.fuel}, water {visit.water}. {visit.status}.</p>
+                      <p className="text-quiet">Boil {visit.boil}, {visit.fuel}, water {visit.water}. {visit.shape === "kiosk" ? "Drum" : visit.shape === "house" ? "House filter" : "Shape not set"}. {visit.status}.</p>
+                      {gap ? <p className="mt-1 text-seal">{gap}</p> : null}
                       <div className="mt-2 grid grid-cols-2 gap-2">
                         <button type="button" disabled={!canAccept} onClick={() => mark(visit.id, "accepted")} className="min-h-11 bg-ink text-paper disabled:opacity-40">Accept</button>
                         <button type="button" onClick={() => mark(visit.id, "returned")} className="min-h-11 border border-rule bg-paper">Send back</button>

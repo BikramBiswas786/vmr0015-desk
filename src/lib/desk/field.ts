@@ -9,26 +9,71 @@ export type Visit = {
   boil: "yes" | "no";
   fuel: "wood" | "charcoal" | "gas" | "none";
   water: "untested" | "pass" | "fail";
+  publicPipe: "unknown" | "yes" | "no";
+  shape: "unset" | "house" | "kiosk";
+  treatment: "unknown" | "membrane" | "ceramic" | "chlorine" | "flocculant" | "solar" | "other";
+  sealed: "yes" | "no";
   photo: string;
   status: "in" | "accepted" | "returned";
 };
 
+const HOUSE_TREATMENTS = new Set(["membrane", "ceramic", "chlorine", "flocculant", "solar"]);
+const KIOSK_TREATMENTS = new Set(["chlorine", "flocculant", "solar"]);
+
+export function rulePass(visit: Visit): boolean {
+  const fuelOk = visit.boil === "yes" && (visit.fuel === "wood" || visit.fuel === "charcoal");
+  const waterOk = visit.water === "pass" && visit.photo.length > 0 && visit.publicPipe === "no";
+  const houseOk = visit.shape === "house" && HOUSE_TREATMENTS.has(visit.treatment);
+  const kioskOk = visit.shape === "kiosk" && KIOSK_TREATMENTS.has(visit.treatment) && visit.sealed === "yes";
+  return fuelOk && waterOk && (houseOk || kioskOk);
+}
+
+export function ruleGap(visit: Visit): string {
+  if (visit.publicPipe === "yes") return "A public safe-water pipe is already there. The methodology does not apply.";
+  if (visit.publicPipe !== "no") return "Say whether a public safe-water pipe is already there.";
+  if (visit.boil !== "yes" || (visit.fuel !== "wood" && visit.fuel !== "charcoal")) return "The house must boil with wood or charcoal.";
+  if (visit.water !== "pass") return "The water test has not passed.";
+  if (!visit.photo) return "A photo is missing.";
+  if (visit.shape === "kiosk" && !KIOSK_TREATMENTS.has(visit.treatment)) return "A drum run counts only if the point uses chlorine, a flocculant powder, or solar.";
+  if (visit.shape === "kiosk" && visit.sealed !== "yes") return "The drum must be sealed, or the water must still carry disinfectant.";
+  if (visit.shape === "house" && !HOUSE_TREATMENTS.has(visit.treatment)) return "The house filter is not one the methodology names.";
+  if (visit.shape === "unset") return "Say whether this is a house filter or a drum from a treatment point.";
+  return "";
+}
+
 export function countsTowardSample(visit: Visit): boolean {
-  return (
-    visit.status === "accepted" &&
-    visit.water === "pass" &&
-    visit.boil === "yes" &&
-    (visit.fuel === "wood" || visit.fuel === "charcoal") &&
-    visit.photo.length > 0
-  );
+  return visit.status === "accepted" && rulePass(visit);
+}
+
+function asChoice<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
 }
 
 function load(): Visit[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as Visit[];
-    return Array.isArray(parsed) ? parsed.slice(0, 40) : [];
+    const parsed = JSON.parse(raw) as Partial<Visit>[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.slice(0, 40).flatMap((row) => {
+      if (!row || typeof row.id !== "string" || typeof row.house !== "string") return [];
+      return [
+        {
+          id: row.id,
+          house: row.house,
+          takenAt: typeof row.takenAt === "string" ? row.takenAt : "",
+          boil: asChoice(row.boil, ["yes", "no"] as const, "no"),
+          fuel: asChoice(row.fuel, ["wood", "charcoal", "gas", "none"] as const, "none"),
+          water: asChoice(row.water, ["untested", "pass", "fail"] as const, "untested"),
+          publicPipe: asChoice(row.publicPipe, ["unknown", "yes", "no"] as const, "unknown"),
+          shape: asChoice(row.shape, ["unset", "house", "kiosk"] as const, "unset"),
+          treatment: asChoice(row.treatment, ["unknown", "membrane", "ceramic", "chlorine", "flocculant", "solar", "other"] as const, "unknown"),
+          sealed: asChoice(row.sealed, ["yes", "no"] as const, "no"),
+          photo: typeof row.photo === "string" ? row.photo : "",
+          status: asChoice(row.status, ["in", "accepted", "returned"] as const, "in"),
+        },
+      ];
+    });
   } catch {
     return [];
   }

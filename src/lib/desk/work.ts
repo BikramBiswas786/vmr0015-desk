@@ -19,6 +19,7 @@ export type Work = {
   stage: Stage;
   visitIds: string[];
   chain: string;
+  plant: string;
   validationNote: string;
   monitoringNote: string;
   offers: Offer[];
@@ -31,6 +32,7 @@ export const EMPTY_WORK: Work = {
   stage: "open",
   visitIds: [],
   chain: "",
+  plant: "",
   validationNote: "",
   monitoringNote: "",
   offers: [],
@@ -53,6 +55,8 @@ export function loadWork(): Work {
       setId: parsed.setId === "B" ? "B" : "A",
       stage: isStage(parsed.stage) ? parsed.stage : "open",
       visitIds: Array.isArray(parsed.visitIds) ? parsed.visitIds.filter((id) => typeof id === "string") : [],
+      chain: typeof parsed.chain === "string" ? parsed.chain : "",
+      plant: typeof parsed.plant === "string" ? parsed.plant : "",
       offers: Array.isArray(parsed.offers) ? parsed.offers.slice(0, 20) : [],
     };
   } catch {
@@ -84,7 +88,9 @@ export function lockedVisits(work: Work, visits: Visit[]): Visit[] {
 
 export async function chainHash(visits: Visit[]): Promise<string> {
   const body = visits
-    .map((visit) => [visit.id, visit.house, visit.takenAt, visit.boil, visit.fuel, visit.water, visit.status, visit.photo].join("|"))
+    .map((visit) =>
+      [visit.id, visit.house, visit.takenAt, visit.boil, visit.fuel, visit.water, visit.publicPipe, visit.shape, visit.treatment, visit.sealed, visit.status, visit.photo].join("|"),
+    )
     .join("\n");
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body));
   return [...new Uint8Array(buf)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
