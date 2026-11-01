@@ -124,6 +124,6 @@ export const STAGE_LINE: Record<Stage, string> = {
   described: "The developer has locked a project description.",
   validated: "The checker has validated that description.",
   monitoring: "A monitoring note is in, waiting on the checker.",
-  verified: "Monitoring is verified. Whole tonnes can be issued.",
-  issued: "Issued under the policy. Library approval of the file is still pending.",
+  verified: "The VVB has given a positive verification opinion. Verra has not approved it and has not deposited VCUs.",
+  issued: "A number was written in this desk. It is not a VCU serial.",
 };

@@ -57,9 +57,6 @@ export function WorkDesk() {
   const [starts, setStarts] = useState("");
   const [setId, setSetId] = useState<"A" | "B">("A");
   const [note, setNote] = useState("");
-  const [institution, setInstitution] = useState("");
-  const [offerTonnes, setOfferTonnes] = useState("");
-  const [contact, setContact] = useState("");
   const [guardianUrl, setGuardianUrl] = useState("");
   const [token, setToken] = useState("");
   const [guardianNote, setGuardianNote] = useState("");
@@ -149,24 +146,6 @@ export function WorkDesk() {
     }
   }
 
-  function recordOffer() {
-    const who = institution.trim();
-    const tonnes = Number(offerTonnes);
-    const cap = work.issuedWhole;
-    if (!who || !contact.trim() || !Number.isFinite(tonnes) || tonnes <= 0 || tonnes > cap) return;
-    if (work.stage !== "issued" || chainState !== "match") return;
-    setWork({
-      ...work,
-      offers: [
-        { institution: who, tonnes: tonnes.toFixed(3), contact: contact.trim(), at: new Date().toISOString() },
-        ...work.offers,
-      ].slice(0, 20),
-    });
-    setInstitution("");
-    setOfferTonnes("");
-    setContact("");
-  }
-
   async function copy(kind: string, text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -178,21 +157,10 @@ export function WorkDesk() {
 
   const result = policyIssue(locked.length);
 
-  function issueCredit() {
-    if (work.stage !== "verified" || chainState !== "match" || result.whole < 1 || !criteriaPass(work.criteria)) return;
-    setWork({
-      ...work,
-      stage: "issued",
-      issuedSum: result.sum,
-      issuedWhole: result.whole,
-      issuedAt: new Date().toISOString(),
-    });
-  }
-
-  const packet = [
+  const requestText = [
     `${work.name || "Untitled"} — VMR0015 project description. Not a Verra serial. Not a BEE certificate. Not for sale.`,
     work.plant ? `Treatment point: ${work.plant}.` : "No treatment point named.",
-    STAGE_LINE[work.stage],
+    `Applicability: ${criteriaPass(work.criteria) ? "the seven answers pass" : "the seven answers are missing or void the calculation"}.`,
     `Template ${work.setId}. Houses in the lock: ${work.visitIds.length}. Sample ${sampleTonnes} t at ${POLICY.perHouse} t each.`,
     work.chain ? `Chain ${work.chain}` : "No chain yet.",
     chainState === "match" ? "The houses still match that chain." : chainState === "pending" ? "The chain is still being checked." : chainState === "break" ? "The houses do not match the locked chain." : "No chain yet.",
@@ -320,27 +288,27 @@ export function WorkDesk() {
             ) : null}
             {work.stage === "described" ? (
               <>
-                <p>{work.name}. {locked.length} of {work.visitIds.length} locked houses still pass.</p>
+                <p>This step belongs to a validation and verification body, not to the project proponent. The opinion must be Validated before a registration request can be prepared. {work.name}. {locked.length} of {work.visitIds.length} locked houses still pass.</p>
                 <label className="block">
                   Validation note
                   <textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-24 w-full border border-rule bg-sheet px-3 py-2" />
                 </label>
-                <button type="button" disabled={locked.length === 0} onClick={() => advance("validated", { validationNote: note.trim() })} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-                  Validate
+                <button type="button" disabled={locked.length === 0 || !criteriaPass(work.criteria)} onClick={() => advance("validated", { validationNote: note.trim() || "Validated" })} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+                  Opinion: Validated
                 </button>
-                <button type="button" onClick={takeBack} className="min-h-12 w-full border border-rule bg-sheet">Send the description back</button>
+                <button type="button" onClick={takeBack} className="min-h-12 w-full border border-rule bg-sheet">Opinion: not validated. Send it back</button>
               </>
             ) : null}
             {work.stage === "monitoring" ? (
               <>
+                <p>This is the VVB’s verification opinion. A positive opinion is not Verra’s approval, and it does not deposit VCUs.</p>
                 <p className="border border-rule bg-sheet p-3">{work.monitoringNote}</p>
-                <button type="button" onClick={() => advance("verified")} className="min-h-12 w-full bg-ink font-medium text-paper">Verify the monitoring</button>
+                <button type="button" onClick={() => advance("verified")} className="min-h-12 w-full bg-ink font-medium text-paper">Positive verification opinion</button>
                 <button type="button" onClick={() => advance("validated")} className="min-h-12 w-full border border-rule bg-sheet">Send the note back</button>
               </>
             ) : null}
             {work.stage === "validated" ? <p className="text-quiet">Waiting on the developer’s monitoring note.</p> : null}
-            {work.stage === "verified" ? <p className="text-quiet">Verification is done. Open Issue.</p> : null}
-            {work.stage === "issued" ? <p className="text-quiet">Issued. The buyer is recorded under Offers.</p> : null}
+            {work.stage === "verified" || work.stage === "issued" ? <p className="text-quiet">The VVB opinion is in. Open Issue for the request Verra still has to approve.</p> : null}
           </section>
         ) : null}
 
@@ -378,8 +346,8 @@ export function WorkDesk() {
 
         {role === "verra" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <p>Copy the packet for Verra’s Project Hub. The tonnes themselves are issued in this desk, under Issue, using the policy file.</p>
-            <button type="button" onClick={() => copy("verra", packet)} className="min-h-12 w-full bg-ink font-medium text-paper">{copied === "verra" ? "Copied" : "Copy the packet"}</button>
+            <p>Registration and Issuance Process, version 5.0, 16 December 2025. The proponent prepares the request. Verra approves it and deposits the serials. Copy the packet, then submit it yourself on the Project Hub.</p>
+            <button type="button" onClick={() => copy("verra", requestText)} className="min-h-12 w-full bg-ink font-medium text-paper">{copied === "verra" ? "Copied" : "Copy the packet"}</button>
             <a href="https://verra.org/verra-project-hub/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">Verra Project Hub</a>
             <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">VMR0015 on Verra</a>
           </section>
@@ -388,32 +356,20 @@ export function WorkDesk() {
         {role === "issue" ? (
           <section className="mt-4 max-w-xl space-y-3 text-sm">
             <h1 className="font-serif text-3xl leading-none">Issue</h1>
-            <p>The policy voids the number if an applicability answer is Not met. This writes the whole-tonne floor of the sample. It is not a Verra serial.</p>
-            {work.stage === "issued" ? (
-              <p className="border border-rule bg-sheet p-3">
-                {work.name}. {locked.length} houses passed. Calculated {work.issuedSum} t. Issued {work.issuedWhole} t on {work.issuedAt.slice(0, 10)}. One report.
-              </p>
-            ) : work.stage !== "verified" ? (
-              <p>Finish Check, then verify the monitoring note. Issuance opens after that.</p>
-            ) : chainState !== "match" ? (
-              <p>The houses no longer match the lock. Describe them again before issuing.</p>
-            ) : (
-              <>
-                <p>
-                  {locked.length} houses passed. At {POLICY.perHouse} t each, the sum is {result.sum} t. The file mints whole tonnes, so this report issues {result.whole} t.
-                </p>
-                <button type="button" disabled={result.whole < 1 || !criteriaPass(work.criteria)} onClick={issueCredit} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-                  Record {result.whole} t
-                </button>
-                {!criteriaPass(work.criteria) ? <p className="text-quiet">The seven applicability answers are missing or void the calculation. Open Describe and answer them.</p> : null}
-                {result.whole < 1 ? <p className="text-quiet">The sum is under 1 tonne. Add houses that pass, then issue.</p> : null}
-              </>
-            )}
-            {work.stage === "issued" ? (
-              <button type="button" onClick={() => setRole("buyer")} className="min-h-12 w-full border border-rule bg-sheet">
-                Record a buyer
-              </button>
-            ) : null}
+            <p>Verra deposits VCUs after it approves the verification. This desk cannot do that step.</p>
+            <ol className="space-y-2">
+              <li className="border border-rule bg-sheet p-3">1. Proponent. The project description is {work.stage === "open" ? "still open" : "locked"}.</li>
+              <li className="border border-rule bg-sheet p-3">2. VVB. Validation is {work.stage === "open" || work.stage === "described" ? "not given" : "recorded here as Validated"}.</li>
+              <li className="border border-rule bg-sheet p-3">3. Proponent. Submit the registration request on the Verra registry and pay the fee. This desk does not submit it.</li>
+              <li className="border border-rule bg-sheet p-3">4. Verra. Completeness check and review. Not started.</li>
+              <li className="border border-rule bg-sheet p-3">5. Verra. After verification approval, deposit the VCUs and generate the serials. Sample on this phone: {result.sum} t. Not a serial.</li>
+            </ol>
+            {work.stage === "issued" ? <p className="text-seal">A number written here earlier is not a VCU.</p> : null}
+            <button type="button" disabled={work.stage === "open" || work.stage === "described" || !criteriaPass(work.criteria)} onClick={() => copy("request", requestText)} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+              {copied === "request" ? "Copied" : "Copy the registration request"}
+            </button>
+            <button type="button" disabled className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">Deposit VCUs</button>
+            <p className="text-quiet">Deposit stays closed. Only Verra generates the serials, after it has approved the verification.</p>
           </section>
         ) : null}
 
@@ -423,34 +379,10 @@ export function WorkDesk() {
 
         {role === "buyer" ? (
           <section className="mt-4 space-y-3 text-sm">
-            {work.stage !== "issued" ? (
-              <p>A buyer is recorded after Issue. Open Issue once the monitoring is verified and the sum reaches 1 tonne.</p>
-            ) : chainState === "pending" ? (
-              <p>Checking the houses against the lock.</p>
-            ) : chainState !== "match" ? (
-              <p>The locked chain no longer matches the houses. Issue again after the houses are locked.</p>
-            ) : (
-              <>
-                <p>{work.name}. {work.issuedWhole} t issued from {work.issuedSum} t calculated. Record who is taking them.</p>
-                <label className="block">
-                  Institution
-                  <input value={institution} onChange={(event) => setInstitution(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <label className="block">
-                  Tonnes, at most {work.issuedWhole}
-                  <input value={offerTonnes} onChange={(event) => setOfferTonnes(event.target.value)} inputMode="decimal" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <label className="block">
-                  Contact
-                  <input value={contact} onChange={(event) => setContact(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <button type="button" onClick={recordOffer} className="min-h-12 w-full bg-ink font-medium text-paper">Record the buyer</button>
-                <p className="text-quiet">This is the project book for the issued tonnes. Payment is arranged with the buyer.</p>
-              </>
-            )}
+            <p>A buyer can take a VCU only after Verra has deposited it in a registry account. This desk has no serial, so it cannot assign tonnes.</p>
             {work.offers.map((offer) => (
               <p key={`${offer.at}-${offer.institution}`} className="border border-rule bg-sheet p-3">
-                {offer.institution} is taking {offer.tonnes} t, recorded {offer.at.slice(0, 10)}. {offer.contact}
+                {offer.institution} noted {offer.tonnes} t on {offer.at.slice(0, 10)}. Not a VCU. {offer.contact}
               </p>
             ))}
           </section>
