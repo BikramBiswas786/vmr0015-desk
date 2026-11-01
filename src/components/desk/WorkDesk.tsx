@@ -3,6 +3,7 @@ import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
+import { guideAnswer } from "@/lib/desk/guideBook";
 import { vmrCheck } from "@/lib/desk/review";
 import { VENUES } from "@/lib/desk/markets";
 import { Criteria } from "@/components/desk/Criteria";
@@ -11,7 +12,7 @@ import { useEffect, useState } from "react";
 const RATE = Number(POLICY.perHouse);
 
 const JOBS = [
-  ["drum", "Drum boy"],
+  ["drum", "Field worker"],
   ["check", "Checker"],
   ["developer", "Developer"],
   ["business", "Business"],
@@ -56,6 +57,7 @@ const SIDE: Record<Exclude<Role, "who">, [string, string, string][]> = {
     ["import", "Import it in Guardian", "Open Guardian and import the file there. This page cannot import it for you."],
   ],
   verra: [
+    ["ask", "Ask", "Ask in ordinary words. The guide uses the VMR0015 questions, the CDM parts in the policy file, and this project's answers."],
     ["check", "Check every question", "Each VMR0015 question is read against this project. A pass here is not a Verra approval."],
     ["registry", "The registry", "The public registry is where a serial would be looked up after Verra issues it. This phone does not hold that login."],
   ],
@@ -94,6 +96,8 @@ export function WorkDesk() {
   const [buyerTonnes, setBuyerTonnes] = useState("");
   const [buyerContact, setBuyerContact] = useState("");
   const [seller, setSeller] = useState("");
+  const [askQ, setAskQ] = useState("");
+  const [askA, setAskA] = useState("");
   const [liveHash, setLiveHash] = useState("");
 
   const counted = visits.filter(countsTowardSample);
@@ -376,7 +380,7 @@ export function WorkDesk() {
               {work.stage === "open" ? `Lock ${free.length} houses` : `New description, ${free.length} houses`}
             </button>
             {!criteriaPass(work.criteria) ? <p className="text-quiet">Go back to Seven questions. They are not all yes yet.</p> : null}
-            {free.length === 0 ? <p className="text-quiet">No new accepted house. The drum boy takes a photo. The checker accepts it.</p> : null}
+            {free.length === 0 ? <p className="text-quiet">No new accepted house. The field worker takes a photo. The checker accepts it.</p> : null}
           </section>
         ) : null}
         {role === "developer" && pane === "note" ? (
@@ -396,7 +400,7 @@ export function WorkDesk() {
         {role === "check" && pane === "houses" ? (
           <section className="max-w-xl space-y-3 text-sm">
             <p className="leading-relaxed">{SIDE.check[0][2]}</p>
-            {visits.length === 0 ? <p className="text-quiet">No house yet. The drum boy takes the photo.</p> : null}
+            {visits.length === 0 ? <p className="text-quiet">No house yet. The field worker takes the photo.</p> : null}
             {visits.map((visit) => {
               const gap = ruleGap(visit);
               const held = work.visitIds.includes(visit.id);
@@ -520,9 +524,26 @@ export function WorkDesk() {
             ))}
           </section>
         ) : null}
-        {role === "verra" && pane === "check" ? (
+        {role === "verra" && pane === "ask" ? (
           <section className="max-w-xl space-y-3 text-sm">
             <p className="leading-relaxed">{SIDE.verra[0][2]}</p>
+            <label className="block">
+              Your question
+              <input value={askQ} onChange={(event) => setAskQ(event.target.value)} placeholder="What does the water test require?" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <button
+              type="button"
+              onClick={() => setAskA(guideAnswer(askQ, vmrCheck(work.criteria, locked)).body)}
+              className="min-h-12 w-full bg-ink font-medium text-paper"
+            >
+              Ask
+            </button>
+            <p className="border border-rule bg-sheet p-3 leading-relaxed">{askA || guideAnswer("", vmrCheck(work.criteria, locked)).body}</p>
+          </section>
+        ) : null}
+        {role === "verra" && pane === "check" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.verra[1][2]}</p>
             <p>
               {vmrCheck(work.criteria, locked).filter((line) => line.pass).length} passed.{" "}
               {vmrCheck(work.criteria, locked).filter((line) => !line.pass).length} still open. Method {POLICY.method}.
@@ -537,7 +558,7 @@ export function WorkDesk() {
         ) : null}
         {role === "verra" && pane === "registry" ? (
           <section className="max-w-xl space-y-3 text-sm">
-            <p className="leading-relaxed">{SIDE.verra[1][2]}</p>
+            <p className="leading-relaxed">{SIDE.verra[2][2]}</p>
             <a href="https://registry.verra.org/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">
               Open the Verra registry
             </a>

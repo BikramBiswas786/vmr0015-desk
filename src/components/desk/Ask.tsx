@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const LINES: Record<string, string[]> = {
   drum: [
-    "You are the drum boy. You only take the photo and answer the questions.",
+    "You are the field worker. You only take the photo and answer the questions.",
     "Write the house, how many people, wood or charcoal, drum or filter, and whether the water passed.",
     "A new photo is always allowed. It does not close because someone else already wrote a description.",
     "You do not validate, you do not issue, and you do not sell.",
