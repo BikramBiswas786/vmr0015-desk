@@ -1,4 +1,4 @@
-type Go = "home" | "field" | "checker" | "developer" | "guardian" | "verra" | "markets";
+type Go = "home" | "field" | "checker" | "developer" | "guardian" | "verra" | "issue" | "markets";
 
 const STEPS: { title: string; body: string; go?: Go; action?: string }[] = [
   {
@@ -32,10 +32,10 @@ const STEPS: { title: string; body: string; go?: Go; action?: string }[] = [
     action: "Open Describe",
   },
   {
-    title: "Send the packet, do not sell",
-    body: "Open Verra to copy the packet. Verra’s Project Hub is a different website. This app does not submit it. A buyer can write an offer only after a checker verifies monitoring, and that offer is a note. No money moves. A sale needs a serial Verra has already issued.",
-    go: "verra",
-    action: "Open Verra",
+    title: "Issue the tonnes",
+    body: "Open Issue after the monitoring note is verified. Each house that passed counts at the policy rate, 0.519 tonnes. The file mints whole tonnes, one report. When the sum reaches 1, issue it, then record the buyer under Offers. Policy file: waiting for library approval.",
+    go: "issue",
+    action: "Open Issue",
   },
 ];
 
@@ -45,29 +45,21 @@ export function Guide({ onGo }: { onGo: (next: Go) => void }) {
       <p className="text-xs tracking-widest text-quiet uppercase">How to use this</p>
       <h1 className="mt-2 font-serif text-4xl leading-none">Guide</h1>
       <p className="mt-4 text-sm leading-relaxed">
-        This is a desk for one Verra method: safe drinking water that replaces boiling with wood. Anyone can read it. It does not make you the owner of a district, and it does not pay you.
+        This desk runs one Verra method from the house to the issued tonnes: safe drinking water that replaces boiling with wood. Follow the steps on the left, in order.
       </p>
 
-      <h2 className="mt-8 font-serif text-2xl">What you are looking at</h2>
+      <h2 className="mt-8 font-serif text-2xl">Policy status</h2>
       <p className="mt-2 text-sm leading-relaxed">
-        The left side is the whole app. Pick a heading. The page on the right changes. You do not have to understand carbon markets to start. Follow the six steps below, in order.
+        The policy file is waiting for library approval. This desk already treats it as the rule. A house that passes is counted. A verified monitoring report can be issued as whole tonnes. The same house is not also claimed on India’s plant-certificate market.
       </p>
-
-      <h2 className="mt-8 font-serif text-2xl">What this app will not do</h2>
-      <ul className="mt-3 space-y-2 text-sm leading-relaxed">
-        <li>It will not register a project with Verra.</li>
-        <li>It will not mint a credit. Guardian does that only after the imported file reaches issuance, and only on a Guardian server.</li>
-        <li>It will not sell a tonne. India’s carbon-certificate market is for industrial plants, and safe drinking water is not on that list.</li>
-        <li>The same house cannot be counted on Verra and on the Indian market.</li>
-      </ul>
 
       <h2 className="mt-8 font-serif text-2xl">Who does what</h2>
       <ul className="mt-3 space-y-2 text-sm leading-relaxed">
         <li>The person at the house takes the photo and answers the questions.</li>
         <li>A different person checks the answers.</li>
         <li>The project developer locks those houses into one description.</li>
-        <li>A verifier, inside Guardian, writes the validation and verification reports.</li>
-        <li>Verra, outside this app, decides whether to issue a serial.</li>
+        <li>Issue writes the whole tonnes once the sum reaches 1.</li>
+        <li>Offers records who is taking those tonnes.</li>
       </ul>
 
       <ol className="mt-8 space-y-6">

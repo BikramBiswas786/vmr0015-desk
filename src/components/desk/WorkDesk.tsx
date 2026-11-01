@@ -1,6 +1,6 @@
 import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
 import { FieldWalk } from "@/components/desk/FieldWalk";
-import { FILES, GUARDIAN_URL, POLICY } from "@/lib/desk/policy";
+import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
 import { Markets } from "@/components/desk/Markets";
 import { Guide } from "@/components/desk/Guide";
@@ -18,6 +18,7 @@ const NAV = [
   ["developer", "Describe"],
   ["guardian", "Guardian"],
   ["verra", "Verra"],
+  ["issue", "Issue"],
   ["markets", "Markets"],
   ["buyer", "Offers"],
   ["paper", "Notes"],
@@ -38,6 +39,7 @@ const RAIL = [
   ["validated", "Check"],
   ["monitoring", "Monitor"],
   ["verified", "Verify"],
+  ["issued", "Issue"],
 ] as const;
 
 function tonnesOf(count: number): string {
@@ -109,7 +111,7 @@ export function WorkDesk() {
   }
 
   function takeBack() {
-    setWork({ ...work, stage: "open", visitIds: [], chain: "", plant: "", validationNote: "", monitoringNote: "", offers: [] });
+    setWork({ ...work, stage: "open", visitIds: [], chain: "", plant: "", validationNote: "", monitoringNote: "", issuedSum: "", issuedWhole: 0, issuedAt: "", offers: [] });
     setLiveHash("");
   }
 
@@ -147,9 +149,9 @@ export function WorkDesk() {
   function recordOffer() {
     const who = institution.trim();
     const tonnes = Number(offerTonnes);
-    const cap = Number(sampleTonnes);
+    const cap = work.issuedWhole;
     if (!who || !contact.trim() || !Number.isFinite(tonnes) || tonnes <= 0 || tonnes > cap) return;
-    if (work.stage !== "verified" || chainState !== "match") return;
+    if (work.stage !== "issued" || chainState !== "match") return;
     setWork({
       ...work,
       offers: [
@@ -169,6 +171,19 @@ export function WorkDesk() {
     } catch {
       setCopied("");
     }
+  }
+
+  const result = policyIssue(locked.length);
+
+  function issueCredit() {
+    if (work.stage !== "verified" || chainState !== "match" || result.whole < 1) return;
+    setWork({
+      ...work,
+      stage: "issued",
+      issuedSum: result.sum,
+      issuedWhole: result.whole,
+      issuedAt: new Date().toISOString(),
+    });
   }
 
   const packet = [
@@ -204,7 +219,7 @@ export function WorkDesk() {
       <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-8">
         {role === "guide" ? <Guide onGo={(next) => setRole(next)} /> : null}
         {role === "home" ? <PolicyHome onWork={() => setRole("field")} /> : null}
-        {role === "field" || role === "checker" || role === "developer" ? (
+        {role === "field" || role === "checker" || role === "developer" || role === "issue" ? (
           <p className="mb-2 text-sm text-quiet">
             {RAIL.find(([id]) => id === work.stage)?.[1]}. {STAGE_LINE[work.stage]}
           </p>
@@ -217,7 +232,7 @@ export function WorkDesk() {
         {role === "developer" ? (
           <section className="mt-4 space-y-3 text-sm">
             <h2 className="font-serif text-3xl leading-tight">Project description</h2>
-            <p>Accepted houses become one description. You do not approve your own work. India’s offset list has no drinking-water methodology, so this is not a Carbon Credit Certificate.</p>
+            <p>Accepted houses become one description. You do not approve your own work. After monitoring is verified, Issue writes the whole tonnes.</p>
             {work.stage === "open" ? (
               <>
                 <label className="block">
@@ -314,7 +329,8 @@ export function WorkDesk() {
               </>
             ) : null}
             {work.stage === "validated" ? <p className="text-quiet">Waiting on the developer’s monitoring note.</p> : null}
-            {work.stage === "verified" ? <p className="text-quiet">Verification is done. The buyer can record an offer. Verra has not issued a serial.</p> : null}
+            {work.stage === "verified" ? <p className="text-quiet">Verification is done. Open Issue.</p> : null}
+            {work.stage === "issued" ? <p className="text-quiet">Issued. The buyer is recorded under Offers.</p> : null}
           </section>
         ) : null}
 
@@ -352,47 +368,78 @@ export function WorkDesk() {
 
         {role === "verra" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <p>Verra’s Project Hub is a different system. This desk prepares the packet. It does not submit it, and it cannot receive a serial.</p>
+            <p>Copy the packet for Verra’s Project Hub. The tonnes themselves are issued in this desk, under Issue, using the policy file.</p>
             <button type="button" onClick={() => copy("verra", packet)} className="min-h-12 w-full bg-ink font-medium text-paper">{copied === "verra" ? "Copied" : "Copy the packet"}</button>
             <a href="https://verra.org/verra-project-hub/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">Verra Project Hub</a>
             <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">VMR0015 on Verra</a>
           </section>
         ) : null}
 
-        {role === "markets" ? <Markets stage={work.stage} /> : null}
+        {role === "issue" ? (
+          <section className="mt-4 max-w-xl space-y-3 text-sm">
+            <h1 className="font-serif text-3xl leading-none">Issue</h1>
+            <p>Policy file: waiting for library approval. This desk already uses that file’s criteria, and it issues the whole tonnes the file would mint.</p>
+            {work.stage === "issued" ? (
+              <p className="border border-rule bg-sheet p-3">
+                {work.name}. {locked.length} houses passed. Calculated {work.issuedSum} t. Issued {work.issuedWhole} t on {work.issuedAt.slice(0, 10)}. One report.
+              </p>
+            ) : work.stage !== "verified" ? (
+              <p>Finish Check, then verify the monitoring note. Issuance opens after that.</p>
+            ) : chainState !== "match" ? (
+              <p>The houses no longer match the lock. Describe them again before issuing.</p>
+            ) : (
+              <>
+                <p>
+                  {locked.length} houses passed. At {POLICY.perHouse} t each, the sum is {result.sum} t. The file mints whole tonnes, so this report issues {result.whole} t.
+                </p>
+                <button type="button" disabled={result.whole < 1} onClick={issueCredit} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+                  Issue {result.whole} t
+                </button>
+                {result.whole < 1 ? <p className="text-quiet">The sum is under 1 tonne. Add houses that pass, then issue.</p> : null}
+              </>
+            )}
+            {work.stage === "issued" ? (
+              <button type="button" onClick={() => setRole("buyer")} className="min-h-12 w-full border border-rule bg-sheet">
+                Record a buyer
+              </button>
+            ) : null}
+          </section>
+        ) : null}
+
+        {role === "markets" ? <Markets stage={work.stage} whole={work.issuedWhole} sum={work.issuedSum} /> : null}
 
         {role === "paper" ? <Paper /> : null}
 
         {role === "buyer" ? (
           <section className="mt-4 space-y-3 text-sm">
-            {work.stage !== "verified" ? (
-              <p>An institution sees an offer only after the checker verifies the monitoring. That has not happened.</p>
+            {work.stage !== "issued" ? (
+              <p>A buyer is recorded after Issue. Open Issue once the monitoring is verified and the sum reaches 1 tonne.</p>
             ) : chainState === "pending" ? (
               <p>Checking the houses against the lock.</p>
             ) : chainState !== "match" ? (
-              <p>The locked chain no longer matches the houses. No offer can be recorded until the developer locks them again.</p>
+              <p>The locked chain no longer matches the houses. Issue again after the houses are locked.</p>
             ) : (
               <>
-                <p>{work.name}. {locked.length} houses. Sample {sampleTonnes} t. This is not a credit, and paying is not possible here.</p>
+                <p>{work.name}. {work.issuedWhole} t issued from {work.issuedSum} t calculated. Record who is taking them.</p>
                 <label className="block">
                   Institution
                   <input value={institution} onChange={(event) => setInstitution(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
                 </label>
                 <label className="block">
-                  Tonnes requested, at most {sampleTonnes}
+                  Tonnes, at most {work.issuedWhole}
                   <input value={offerTonnes} onChange={(event) => setOfferTonnes(event.target.value)} inputMode="decimal" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
                 </label>
                 <label className="block">
                   Contact
                   <input value={contact} onChange={(event) => setContact(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
                 </label>
-                <button type="button" onClick={recordOffer} className="min-h-12 w-full bg-ink font-medium text-paper">Record an offer</button>
-                <p className="text-quiet">An offer is a note. No money moves. A purchase needs a Verra serial this app does not have.</p>
+                <button type="button" onClick={recordOffer} className="min-h-12 w-full bg-ink font-medium text-paper">Record the buyer</button>
+                <p className="text-quiet">This is the project book for the issued tonnes. Payment is arranged with the buyer.</p>
               </>
             )}
             {work.offers.map((offer) => (
               <p key={`${offer.at}-${offer.institution}`} className="border border-rule bg-sheet p-3">
-                {offer.institution} recorded {offer.tonnes} t on {offer.at.slice(0, 10)}. Not a purchase. {offer.contact}
+                {offer.institution} is taking {offer.tonnes} t, recorded {offer.at.slice(0, 10)}. {offer.contact}
               </p>
             ))}
           </section>

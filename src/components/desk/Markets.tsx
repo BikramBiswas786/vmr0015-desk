@@ -1,6 +1,5 @@
 import { BEE_LIST, METHODS, VENUES, type Fit } from "@/lib/desk/markets";
 import type { Stage } from "@/lib/desk/work";
-import { useState } from "react";
 
 const FIT: Record<Fit, string> = {
   possible: "Can describe this water project",
@@ -8,10 +7,7 @@ const FIT: Record<Fit, string> = {
   no: "Cannot list this project",
 };
 
-export function Markets({ stage }: { stage: Stage }) {
-  const [serial, setSerial] = useState("");
-  const pasted = serial.trim();
-
+export function Markets({ stage, whole, sum }: { stage: Stage; whole: number; sum: string }) {
   return (
     <section className="mt-6 space-y-6 text-sm">
       <div>
@@ -53,23 +49,11 @@ export function Markets({ stage }: { stage: Stage }) {
         BEE offset methodology list
       </a>
       <div className="border border-rule p-3">
-        <h2 className="font-serif text-2xl leading-tight">This case cannot be listed</h2>
+        <h2 className="font-serif text-2xl leading-tight">{stage === "issued" ? "Issued under the policy" : "Not issued yet"}</h2>
         <p className="mt-2 leading-relaxed">
-          {stage === "verified"
-            ? "The checker has verified the monitoring. Verra has not issued a serial, so there is nothing to transfer."
-            : "The case has not reached a verified monitoring report, and no registry has issued a unit."}
-        </p>
-        <label className="mt-3 block">
-          Paste a serial only if Verra already issued one
-          <input value={serial} onChange={(event) => setSerial(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-        </label>
-        <button type="button" disabled className="mt-3 min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-          List for trade
-        </button>
-        <p className="mt-2 text-quiet">
-          {pasted
-            ? `“${pasted}” is a claim. This desk did not find it on a registry, and pasting it does not list a tonne.`
-            : "Listing stays closed. A marketplace sale needs a unit the registry has already issued."}
+          {stage === "issued"
+            ? `${whole} whole tonnes are issued from ${sum} t calculated. Record the buyer under Offers. Policy file: waiting for library approval.`
+            : "Finish the houses, the check, and the monitoring note. Issue opens when the sum reaches 1 whole tonne."}
         </p>
       </div>
     </section>

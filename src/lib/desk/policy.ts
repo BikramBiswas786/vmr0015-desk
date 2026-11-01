@@ -33,6 +33,11 @@ export const POLICY = {
   perHouse: "0.519",
 } as const;
 
+export function policyIssue(count: number): { sum: string; whole: number } {
+  const sum = count * Number(POLICY.perHouse);
+  return { sum: sum.toFixed(3), whole: Math.floor(sum + 1e-9) };
+}
+
 export const GUARDIAN_URL = "https://www.climission.com/mgs";
 
 export const FILES = [
