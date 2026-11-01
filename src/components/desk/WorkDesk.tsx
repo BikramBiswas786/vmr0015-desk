@@ -1,6 +1,6 @@
 import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
 import { FieldWalk } from "@/components/desk/FieldWalk";
-import { FILES, GUARDIAN_URL, POLICY, companyPacket, policyIssue, verraPacket } from "@/lib/desk/policy";
+import { FILES, GUARDIAN_URL, POLICY, companyPacket, guardianMail, policyIssue, verraPacket } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage, type Work } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
 import { askGuide, knownAnswer } from "@/lib/desk/askGuide";
@@ -384,9 +384,9 @@ export function WorkDesk() {
               <li>Buyer. {work.brought.serialSeen ? `Brought back: ${work.brought.serialSeen}. This phone did not check that serial.` : "Waiting. No serial exists until Verra deposits one."}</li>
             </ul>
             <div className="mt-4 grid gap-2">
-              <button type="button" onClick={() => void copy("guardian-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "guardian-note" ? "Copied" : "Copy the note for the Guardian team"}</button>
-              <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "verra-note" ? "Copied" : "Copy the note for Verra"}</button>
-              <button type="button" onClick={() => void copy("business-note", companyPacket(null, ""))} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "business-note" ? "Copied" : "Copy the note for a water business"}</button>
+              <button type="button" onClick={() => void copy("guardian-note", guardianMail())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "guardian-note" ? "Copied" : "Copy the email for the Guardian team"}</button>
+              <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "verra-note" ? "Copied" : "Copy the email for Verra"}</button>
+              <button type="button" onClick={() => void copy("business-note", companyPacket(null, ""))} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "business-note" ? "Copied" : "Copy the email for a water business"}</button>
             </div>
             <div className="mt-6 grid gap-3">
               {JOBS.map(([id, label]) => (
@@ -528,10 +528,10 @@ export function WorkDesk() {
             <a href={FILES.find((file) => file.version === "v3.1" && file.id === "B")?.href ?? FILES[0].href} download className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
               Download file B
             </a>
-            <button type="button" onClick={() => void copy("guardian-note", verraPacket())} className="min-h-12 w-full border border-rule bg-sheet">
-              {copied === "guardian-note" ? "Copied" : "Copy the note for the Guardian team"}
+            <button type="button" onClick={() => void copy("guardian-note", guardianMail())} className="min-h-12 w-full border border-rule bg-sheet">
+              {copied === "guardian-note" ? "Copied" : "Copy the email for the Guardian team"}
             </button>
-            <p className="text-quiet">Send the file and that note. The note says the pull request is open and the dry-run is not a Verra serial.</p>
+            <p className="text-quiet">Post that email on the pull request. It asks for a comment. It does not ask them to merge.</p>
           </section>
         ) : null}
         {role === "guardian" && pane === "import" ? (
@@ -569,7 +569,7 @@ export function WorkDesk() {
             {work.stage === "issued" ? <p className="text-seal">A number stored on this phone earlier is not a Verra issuance.</p> : null}
             <p className="border border-rule bg-sheet p-3">{work.name || "No project yet"}. {locked.length} houses. Sample {result.sum} t at {POLICY.perHouse} t each. Not issued.</p>
             <button type="button" onClick={() => void copy("business-note", companyPacket(null, work.plant || work.name))} className="min-h-12 w-full border border-rule bg-sheet">
-              {copied === "business-note" ? "Copied" : "Copy the note for a water business"}
+              {copied === "business-note" ? "Copied" : "Copy the email for a water business"}
             </button>
           </section>
         ) : null}
@@ -682,7 +682,7 @@ export function WorkDesk() {
               VMR0015 on Verra
             </a>
             <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 w-full border border-rule bg-sheet">
-              {copied === "verra-note" ? "Copied" : "Copy the note for Verra"}
+              {copied === "verra-note" ? "Copied" : "Copy the email for Verra"}
             </button>
             <p className="text-quiet">This is the last step of the Verra job. The registry login is Verra's. This phone does not have it.</p>
           </section>

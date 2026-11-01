@@ -108,55 +108,66 @@ export const DIGITISED = [
   "Boil share and stove efficiency from the survey, when the survey rows are there.",
 ] as const;
 
-export function verraPacket(): string {
-  return `Subject: VMR0015 Guardian policy v3.1, for the methodology file. Not a project registration.
+export function guardianMail(): string {
+  return `To: post this as a comment on the pull request. There is no separate Guardian inbox in this note.
 
-This is not a request to open a project, and not a request to hold any district.
+Subject: Feedback requested on draft VMR0015 policy v3.1, before any rollout. Not a request to merge.
 
-The file is a Hedera Guardian policy for Verra VMR0015 v1.0, the revision of CDM AMS-III.AV v09.0. The submission is v3.1. v3.2 only closes two fNRB input checks and is a backup, not the file under review unless a reviewer asks for it.
+I am Bikram Biswas. I prepared the draft Guardian policy in pull request 6164. I also built a field notebook that collects house answers. I am writing before I ask any water distributor to use either one.
+
+I did not write Verra methodology VMR0015. Verra did. The file is a draft digitisation of that methodology. The pull request is open. It is not merged. The file's own version field is Dry Run. A dry-run mint is not a Verra serial.
 
 Pull request: ${POLICY.prUrl}
-State when checked on ${CHECKED}: open, not merged, last updated ${POLICY.updated}. No review was on it.
-
-Import the MGS export, Guardian 3.7.0 or later, and run the integrity test. The file in the pull request says 100 percent, 13 of 13 documents, from a dry-run on ${POLICY.guardianTest}.
-
-v5.0A, projects starting before 1 January 2027
-${FILES[0].name}
+Field notebook, for context only: https://vmr0015-policy-privacy-rebels-projects.vercel.app
+File A, projects starting before 1 January 2027: ${FILES[0].name}
 sha256 ${FILES[0].sha}
-
-v5.0B, projects starting on or after 1 January 2027
-${FILES[1].name}
+File B, projects starting on or after 1 January 2027: ${FILES[1].name}
 sha256 ${FILES[1].sha}
 
-Sample project inside the file, not a real place:
-ex-ante ${POLICY.exAnte} t CO2e a year
-ex-post ${POLICY.exPost} t CO2e
-mint ${POLICY.mint}
-That is ${POLICY.perHouse} t a household a year in the sample, not 4.
+Please comment on the file. I am not asking you to merge it, to import the website, or to treat the notebook as a Guardian project.
 
-The mint is on a Guardian dry-run. It is not a Verra serial. No issuance is requested.
+Bikram Biswas
+Balurghat, Dakshin Dinajpur`;
+}
 
-Package: ${POLICY.readmeUrl}
-Method: ${POLICY.methodUrl}`;
+export function verraPacket(): string {
+  return `To: a Verra methodology contact, if you have one. Do not send this to hubsupport@verra.org. That address is for Project Hub access after an account is approved.
+
+Subject: Draft digitisation of VMR0015. Feedback only. Not a project. Not a registration request.
+
+I am Bikram Biswas. I prepared a draft Hedera Guardian policy for your published methodology VMR0015 v1.0, the revision of CDM AMS-III.AV. I did not write the methodology. I also built a field notebook for houses that boil drinking water.
+
+The policy file is pull request 6164 on hashgraph/guardian. It is open. It is not merged. I am not asking Verra to open a project, to hold any district, or to issue a credit. No registry account has been approved for this work.
+
+Before I show the notebook to water distributors, I am asking whether Verra has a channel for comments on a draft digitisation. If the answer is that you only review projects through the registry, I will not send the website again.
+
+Pull request: ${POLICY.prUrl}
+Method: ${POLICY.methodUrl}
+Notebook: https://vmr0015-policy-privacy-rebels-projects.vercel.app
+
+India's offset-mechanism list, on the Bureau of Energy Efficiency page last updated 7 July 2026, does not include safe drinking water. I am not claiming this draft is an Indian compliance credit.
+
+Bikram Biswas
+Balurghat, Dakshin Dinajpur`;
 }
 
 export function companyPacket(partner: Partner | null, area: string): string {
-  const who = partner ? partner.name : "your team";
+  const who = partner ? partner.name : "the person who distributes the water";
   const place = area.trim();
-  const placeLine = place
-    ? `A lane named ${place} is on a private notebook. It is not reserved, and it is not part of this file.`
-    : "No district is attached to this file.";
-  return `Subject: Guardian form for VMR0015. A notebook, not a credit for sale.
+  return `To: ${who}
 
-${who}: the attached work is a draft policy that checks a safe-drinking-water project the way VMR0015 asks. It is pull request 6164 on hashgraph/guardian. Checked ${CHECKED}: open, not merged.
+Subject: A question before any carbon work. Not a credit offer.
 
-${placeLine}
+I am Bikram Biswas, in Balurghat. I prepared a draft form for Verra's safe-drinking-water methodology, and a notebook that asks whether a house boils drinking water with wood or charcoal. I have not rolled it out. I am asking you before I do.
 
-What Guardian already did, on a made-up sample, not on a real town: ex-ante ${POLICY.exAnte} t, ex-post ${POLICY.exPost} t, mint ${POLICY.mint}. About ${POLICY.perHouse} t a household a year. A test mint is not a Verra credit. I am not asking you to buy one.
+${place ? `The name I have written so far is ${place}. That name is not reserved.` : "No area is reserved."}
 
-If you already distribute treated water, the useful question is whether the houses boil, with which fuel, and whether the water passes a germ test. Over 10 percent failing that test makes the period zero.
+I am not asking you to buy a credit. There is no serial. India's offset-mechanism list, on the Bureau of Energy Efficiency page last updated 7 July 2026, does not include safe drinking water, so this is not an offer under that scheme.
 
-The file to read: ${POLICY.prUrl}
+If you already treat water and send it out in drums, the useful question is whether I may walk a few houses on your route and record the fuel, the people, and a photo. You can refuse. Nothing is owed.
 
-Name:`;
+The draft file, open and not merged: ${POLICY.prUrl}
+
+Bikram Biswas
+Balurghat, Dakshin Dinajpur`;
 }
