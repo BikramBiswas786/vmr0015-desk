@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { countsTowardSample, type Visit } from "@/lib/desk/field";
+import type { CriteriaAnswers } from "@/lib/desk/criteria";
 
 const KEY = "vmr0015-work-v1";
 
@@ -20,6 +21,7 @@ export type Work = {
   visitIds: string[];
   chain: string;
   plant: string;
+  criteria: CriteriaAnswers;
   validationNote: string;
   monitoringNote: string;
   issuedSum: string;
@@ -36,6 +38,7 @@ export const EMPTY_WORK: Work = {
   visitIds: [],
   chain: "",
   plant: "",
+  criteria: {},
   validationNote: "",
   monitoringNote: "",
   issuedSum: "",
@@ -48,6 +51,15 @@ const STAGES: Stage[] = ["open", "described", "validated", "monitoring", "verifi
 
 export function isStage(value: unknown): value is Stage {
   return typeof value === "string" && STAGES.includes(value as Stage);
+}
+
+function criteriaOf(value: unknown): CriteriaAnswers {
+  if (!value || typeof value !== "object") return {};
+  const out: CriteriaAnswers = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item === "string") out[key] = item;
+  }
+  return out;
 }
 
 export function loadWork(): Work {
@@ -63,6 +75,7 @@ export function loadWork(): Work {
       visitIds: Array.isArray(parsed.visitIds) ? parsed.visitIds.filter((id) => typeof id === "string") : [],
       chain: typeof parsed.chain === "string" ? parsed.chain : "",
       plant: typeof parsed.plant === "string" ? parsed.plant : "",
+      criteria: criteriaOf(parsed.criteria),
       monitoringNote: typeof parsed.monitoringNote === "string" ? parsed.monitoringNote : "",
       issuedSum: typeof parsed.issuedSum === "string" ? parsed.issuedSum : "",
       issuedWhole: typeof parsed.issuedWhole === "number" ? parsed.issuedWhole : 0,
@@ -99,7 +112,7 @@ export function lockedVisits(work: Work, visits: Visit[]): Visit[] {
 export async function chainHash(visits: Visit[]): Promise<string> {
   const body = visits
     .map((visit) =>
-      [visit.id, visit.house, visit.takenAt, visit.boil, visit.fuel, visit.water, visit.publicPipe, visit.shape, visit.treatment, visit.sealed, visit.status, visit.photo].join("|"),
+      [visit.id, visit.house, visit.takenAt, visit.persons, visit.stove, visit.boil, visit.fuel, visit.water, visit.publicPipe, visit.shape, visit.treatment, visit.sealed, visit.status, visit.photo].join("|"),
     )
     .join("\n");
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body));

@@ -1,7 +1,7 @@
 import { compressPhoto, ruleGap, type Visit } from "@/lib/desk/field";
 import { useEffect, useState } from "react";
 
-type Draft = Pick<Visit, "house" | "boil" | "fuel" | "water" | "publicPipe" | "shape" | "treatment" | "sealed" | "photo">;
+type Draft = Pick<Visit, "house" | "boil" | "fuel" | "water" | "publicPipe" | "shape" | "treatment" | "sealed" | "persons" | "stove" | "photo">;
 
 const EMPTY: Draft = {
   house: "",
@@ -12,15 +12,18 @@ const EMPTY: Draft = {
   shape: "unset",
   treatment: "unknown",
   sealed: "no",
+  persons: 0,
+  stove: "unset",
   photo: "",
 };
 
 function stepsFor(draft: Draft): string[] {
   return [
     "house",
+    "people",
     "pipe",
     "boil",
-    ...(draft.boil === "yes" ? ["fuel"] : []),
+    ...(draft.boil === "yes" ? ["fuel", "stove"] : []),
     "shape",
     "treat",
     ...(draft.shape === "kiosk" ? ["seal"] : []),
@@ -90,7 +93,22 @@ export function FieldWalk({
               placeholder="Lane and house"
               className="min-h-12 w-full border border-rule bg-sheet px-3"
             />
-            <button type="button" disabled={!draft.house.trim()} onClick={() => go("pipe")} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+            <button type="button" disabled={!draft.house.trim()} onClick={() => go("people")} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+              Continue
+            </button>
+          </>
+        ) : null}
+        {step === "people" ? (
+          <>
+            <h2 className="font-serif text-3xl leading-tight">How many people live here?</h2>
+            <input
+              inputMode="numeric"
+              value={draft.persons || ""}
+              onChange={(event) => setDraft({ ...draft, persons: Number(event.target.value.replace(/\D/g, "")) || 0 })}
+              placeholder="Persons"
+              className="min-h-12 w-full border border-rule bg-sheet px-3"
+            />
+            <button type="button" disabled={draft.persons < 1} onClick={() => go("pipe")} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
               Continue
             </button>
           </>
@@ -127,10 +145,24 @@ export function FieldWalk({
                 ["gas", "Gas. This house cannot count."],
               ] as const
             ).map(([value, label]) => (
-              <button key={value} type="button" onClick={() => go("shape", { fuel: value })} className="min-h-14 w-full border border-rule bg-sheet px-4 text-left font-medium">
+              <button key={value} type="button" onClick={() => go("stove", { fuel: value })} className="min-h-14 w-full border border-rule bg-sheet px-4 text-left font-medium">
                 {label}
               </button>
             ))}
+          </>
+        ) : null}
+        {step === "stove" ? (
+          <>
+            <h2 className="font-serif text-3xl leading-tight">Is an improved stove used for the boiling?</h2>
+            <button type="button" onClick={() => go("shape", { stove: "none" })} className="min-h-14 w-full border border-rule bg-sheet px-4 text-left font-medium">
+              No
+            </button>
+            <button type="button" onClick={() => go("shape", { stove: "some" })} className="min-h-14 w-full border border-rule bg-sheet px-4 text-left font-medium">
+              For some of it
+            </button>
+            <button type="button" onClick={() => go("shape", { stove: "all" })} className="min-h-14 w-full border border-rule bg-sheet px-4 text-left font-medium">
+              For all of it. The flat rate cannot be used.
+            </button>
           </>
         ) : null}
         {step === "shape" ? (

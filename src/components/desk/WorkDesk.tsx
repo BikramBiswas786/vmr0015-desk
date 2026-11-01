@@ -2,6 +2,8 @@ import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/
 import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
+import { criteriaPass } from "@/lib/desk/criteria";
+import { Criteria } from "@/components/desk/Criteria";
 import { Markets } from "@/components/desk/Markets";
 import { Guide } from "@/components/desk/Guide";
 import { PolicyHome } from "@/components/desk/PolicyHome";
@@ -70,7 +72,7 @@ export function WorkDesk() {
     work.chain === "" ? "none" : liveHash === "" ? "pending" : liveHash === work.chain ? "match" : "break";
   const sampleTonnes = tonnesOf(work.stage === "open" ? counted.length : locked.length);
 
-  function saveHouse(draft: Pick<Visit, "house" | "boil" | "fuel" | "water" | "publicPipe" | "shape" | "treatment" | "sealed" | "photo">) {
+  function saveHouse(draft: Pick<Visit, "house" | "boil" | "fuel" | "water" | "publicPipe" | "shape" | "treatment" | "sealed" | "persons" | "stove" | "photo">) {
     const label = draft.house.trim();
     if (!label || !draft.photo || work.stage !== "open") return;
     const next: Visit = {
@@ -91,13 +93,14 @@ export function WorkDesk() {
   async function lockDescription() {
     const title = name.trim();
     const point = plant.trim();
-    if (!title || !point || counted.length === 0 || work.stage !== "open") return;
+    if (!title || !point || counted.length === 0 || work.stage !== "open" || !criteriaPass(work.criteria)) return;
     const chosen = counted;
     const chain = await chainHash(chosen);
     setWork({
       ...work,
       name: title,
       plant: point,
+      criteria: work.criteria,
       starts,
       setId,
       stage: "described",
@@ -176,7 +179,7 @@ export function WorkDesk() {
   const result = policyIssue(locked.length);
 
   function issueCredit() {
-    if (work.stage !== "verified" || chainState !== "match" || result.whole < 1) return;
+    if (work.stage !== "verified" || chainState !== "match" || result.whole < 1 || !criteriaPass(work.criteria)) return;
     setWork({
       ...work,
       stage: "issued",
@@ -232,9 +235,15 @@ export function WorkDesk() {
         {role === "developer" ? (
           <section className="mt-4 space-y-3 text-sm">
             <h2 className="font-serif text-3xl leading-tight">Project description</h2>
-            <p>Accepted houses become one description. You do not approve your own work. After monitoring is verified, Issue writes the whole tonnes.</p>
+            <p>Accepted houses become one description only after the seven applicability answers pass. A Not met answer voids the calculation in the policy file. You do not approve your own work.</p>
             {work.stage === "open" ? (
               <>
+                <Criteria
+                  answers={work.criteria}
+                  onAnswer={(id, value) => setWork({ ...work, criteria: { ...work.criteria, [id]: value } })}
+                />
+                {criteriaPass(work.criteria) ? (
+                  <>
                 <label className="block">
                   Project name
                   <input value={name} onChange={(event) => setName(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
@@ -257,8 +266,9 @@ export function WorkDesk() {
                 <button type="button" disabled={!name.trim() || !plant.trim() || counted.length === 0} onClick={lockDescription} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
                   Lock {counted.length} houses
                 </button>
-                <p className="text-quiet">This description is for VMR0015. It is not a serial, and it is not for sale.</p>
-                {counted.length === 0 ? <p className="text-quiet">Nothing to lock. A house needs no public safe-water pipe, boiling with wood or charcoal, a passed test, a photo, and an allowed treatment. A drum also needs a seal. The checker must accept it.</p> : null}
+                {counted.length === 0 ? <p className="text-quiet">Nothing to lock. A house needs people, boiling with wood or charcoal that is not all done on an improved stove, no public safe-water pipe, a passed test, a photo, and an allowed treatment.</p> : null}
+                  </>
+                ) : null}
               </>
             ) : (
               <>
@@ -378,7 +388,7 @@ export function WorkDesk() {
         {role === "issue" ? (
           <section className="mt-4 max-w-xl space-y-3 text-sm">
             <h1 className="font-serif text-3xl leading-none">Issue</h1>
-            <p>Policy file: waiting for library approval. This desk already uses that file’s criteria, and it issues the whole tonnes the file would mint.</p>
+            <p>The policy voids the number if an applicability answer is Not met. This writes the whole-tonne floor of the sample. It is not a Verra serial.</p>
             {work.stage === "issued" ? (
               <p className="border border-rule bg-sheet p-3">
                 {work.name}. {locked.length} houses passed. Calculated {work.issuedSum} t. Issued {work.issuedWhole} t on {work.issuedAt.slice(0, 10)}. One report.
@@ -392,9 +402,10 @@ export function WorkDesk() {
                 <p>
                   {locked.length} houses passed. At {POLICY.perHouse} t each, the sum is {result.sum} t. The file mints whole tonnes, so this report issues {result.whole} t.
                 </p>
-                <button type="button" disabled={result.whole < 1} onClick={issueCredit} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-                  Issue {result.whole} t
+                <button type="button" disabled={result.whole < 1 || !criteriaPass(work.criteria)} onClick={issueCredit} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+                  Record {result.whole} t
                 </button>
+                {!criteriaPass(work.criteria) ? <p className="text-quiet">The seven applicability answers are missing or void the calculation. Open Describe and answer them.</p> : null}
                 {result.whole < 1 ? <p className="text-quiet">The sum is under 1 tonne. Add houses that pass, then issue.</p> : null}
               </>
             )}

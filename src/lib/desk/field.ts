@@ -13,6 +13,8 @@ export type Visit = {
   shape: "unset" | "house" | "kiosk";
   treatment: "unknown" | "membrane" | "ceramic" | "chlorine" | "flocculant" | "solar" | "other";
   sealed: "yes" | "no";
+  persons: number;
+  stove: "unset" | "none" | "some" | "all";
   photo: string;
   status: "in" | "accepted" | "returned";
 };
@@ -25,13 +27,17 @@ export function rulePass(visit: Visit): boolean {
   const waterOk = visit.water === "pass" && visit.photo.length > 0 && visit.publicPipe === "no";
   const houseOk = visit.shape === "house" && HOUSE_TREATMENTS.has(visit.treatment);
   const kioskOk = visit.shape === "kiosk" && KIOSK_TREATMENTS.has(visit.treatment) && visit.sealed === "yes";
-  return fuelOk && waterOk && (houseOk || kioskOk);
+  const peopleOk = visit.persons >= 1 && (visit.stove === "none" || visit.stove === "some");
+  return fuelOk && waterOk && peopleOk && (houseOk || kioskOk);
 }
 
 export function ruleGap(visit: Visit): string {
   if (visit.publicPipe === "yes") return "A public safe-water pipe is already there. The methodology does not apply.";
   if (visit.publicPipe !== "no") return "Say whether a public safe-water pipe is already there.";
   if (visit.boil !== "yes" || (visit.fuel !== "wood" && visit.fuel !== "charcoal")) return "The house must boil with wood or charcoal.";
+  if (visit.persons < 1) return "Write how many people live here. The survey row requires it.";
+  if (visit.stove === "all") return "An improved stove is used for all the boiling. The policy reduces that baseline, so this house cannot take the flat 0.519 tonnes.";
+  if (visit.stove === "unset") return "Say whether an improved stove is used for boiling.";
   if (visit.water !== "pass") return "The water test has not passed.";
   if (!visit.photo) return "A photo is missing.";
   if (visit.shape === "kiosk" && !KIOSK_TREATMENTS.has(visit.treatment)) return "A drum run counts only if the point uses chlorine, a flocculant powder, or solar.";
@@ -69,6 +75,8 @@ function load(): Visit[] {
           shape: asChoice(row.shape, ["unset", "house", "kiosk"] as const, "unset"),
           treatment: asChoice(row.treatment, ["unknown", "membrane", "ceramic", "chlorine", "flocculant", "solar", "other"] as const, "unknown"),
           sealed: asChoice(row.sealed, ["yes", "no"] as const, "no"),
+          persons: typeof row.persons === "number" && row.persons > 0 ? Math.round(row.persons) : 0,
+          stove: asChoice(row.stove, ["unset", "none", "some", "all"] as const, "unset"),
           photo: typeof row.photo === "string" ? row.photo : "",
           status: asChoice(row.status, ["in", "accepted", "returned"] as const, "in"),
         },
