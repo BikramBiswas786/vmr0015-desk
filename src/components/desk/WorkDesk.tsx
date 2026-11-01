@@ -1,6 +1,6 @@
 import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
 import { FieldWalk } from "@/components/desk/FieldWalk";
-import { FILES, GUARDIAN_URL, POLICY, companyPacket, guardianMail, policyIssue, verraPacket } from "@/lib/desk/policy";
+import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage, type Work } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
 import { askGuide, knownAnswer } from "@/lib/desk/askGuide";
@@ -24,13 +24,13 @@ const JOBS = [
 type Role = "who" | (typeof JOBS)[number][0];
 
 const JOB_LINE: Record<Exclude<Role, "who">, string> = {
-  drum: "At the door. Not a login.",
-  check: "A second person looks at the photo. Not a login.",
-  developer: "Names the project and locks the houses. Not a login.",
-  business: "Reads the tonnes. Does not sell them.",
-  guardian: "Downloads the policy file. The login is on Guardian's own site.",
-  verra: "Reads the rules. The login is Verra's, not here.",
-  market: "Shows where a real unit would sit. Nothing is sold here.",
+  drum: "Records one house. This is the first step.",
+  check: "A different person accepts the photo, or sends it back.",
+  developer: "Names the project only after the seven questions pass.",
+  business: "Reads the house count. Does not sell.",
+  guardian: "Downloads the policy file. The import happens on Guardian's site.",
+  verra: "The account and, later, a serial happen on Verra's site.",
+  market: "Shows where a serial would be looked up. Nothing is sold here.",
 };
 
 const SIDE: Record<Exclude<Role, "who">, [string, string, string][]> = {
@@ -101,7 +101,6 @@ export function WorkDesk() {
   const [guardianUrl, setGuardianUrl] = useState("");
   const [token, setToken] = useState("");
   const [guardianNote, setGuardianNote] = useState("");
-  const [copied, setCopied] = useState("");
   const [buyerName, setBuyerName] = useState("");
   const [buyerTonnes, setBuyerTonnes] = useState("");
   const [buyerContact, setBuyerContact] = useState("");
@@ -277,15 +276,6 @@ export function WorkDesk() {
     }
   }
 
-  async function copy(kind: string, text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(kind);
-    } catch {
-      setCopied("");
-    }
-  }
-
   const result = policyIssue(locked.length);
 
   async function loadDemo() {
@@ -372,22 +362,21 @@ export function WorkDesk() {
         {role === "who" ? (
           <section className="max-w-xl">
             <h1 className="font-serif text-4xl leading-none">Who are you</h1>
-            <p className="mt-4 text-sm leading-relaxed">Tomorrow, the field workers open this same page and type the crew code you give them. Their houses then sit on one shared list, not on one phone. The list is not a Verra project and not a credit.</p>
+            <p className="mt-4 text-sm leading-relaxed">The goal is a checked list of houses that boil drinking water with wood or charcoal. A credit, if one ever exists, is issued by Verra later. This page does not issue it. Pick your job. The left side then shows only your steps.</p>
+            <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
+              <li>Field worker. At the door. One question, then Continue. The house joins the shared list.</li>
+              <li>Checker. A second person. Accept the photo, or send the house back.</li>
+              <li>Developer. Answer the seven questions. Name the project. Lock only the houses the checker accepted.</li>
+              <li>Business. Read how many houses passed. Do not sell.</li>
+              <li>Guardian. Download the policy file. Import it on Guardian's own site.</li>
+              <li>Verra. Open an account on Verra's site. A serial comes only after Verra deposits one.</li>
+              <li>Market. Look up where a serial would sit. Nothing here is for sale.</li>
+            </ol>
             <label className="mt-4 block text-sm">
-              Crew code
+              Crew code. Every field worker types the same code.
               <input value={crewCode} onChange={(event) => keepCode(event.target.value)} autoComplete="off" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
             </label>
             {crewNote ? <p className="mt-2 text-sm text-quiet">{crewNote}</p> : null}
-            <ul className="mt-4 space-y-1 text-sm">
-              <li>Guardian. {work.brought.guardianSeen ? `Brought back: ${work.brought.guardianSeen}. This is not an approval.` : "Still open. The Guardian job has the steps."}</li>
-              <li>Verra. {work.brought.verraAccount ? `Brought back: ${work.brought.verraAccount}. This is not a registered project.` : "Still open. The Verra job has the steps."}</li>
-              <li>Buyer. {work.brought.serialSeen ? `Brought back: ${work.brought.serialSeen}. This phone did not check that serial.` : "Waiting. No serial exists until Verra deposits one."}</li>
-            </ul>
-            <div className="mt-4 grid gap-2">
-              <button type="button" onClick={() => void copy("guardian-note", guardianMail())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "guardian-note" ? "Copied" : "Copy the email for the Guardian team"}</button>
-              <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "verra-note" ? "Copied" : "Copy the email for Verra"}</button>
-              <button type="button" onClick={() => void copy("business-note", companyPacket(null, ""))} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "business-note" ? "Copied" : "Copy the email for a water business"}</button>
-            </div>
             <div className="mt-6 grid gap-3">
               {JOBS.map(([id, label]) => (
                 <button key={id} type="button" onClick={() => choose(id)} className="min-h-14 border border-rule bg-sheet px-4 py-3 text-left">
@@ -528,10 +517,6 @@ export function WorkDesk() {
             <a href={FILES.find((file) => file.version === "v3.1" && file.id === "B")?.href ?? FILES[0].href} download className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
               Download file B
             </a>
-            <button type="button" onClick={() => void copy("guardian-note", guardianMail())} className="min-h-12 w-full border border-rule bg-sheet">
-              {copied === "guardian-note" ? "Copied" : "Copy the email for the Guardian team"}
-            </button>
-            <p className="text-quiet">Post that email on the pull request. It asks for a comment. It does not ask them to merge.</p>
           </section>
         ) : null}
         {role === "guardian" && pane === "import" ? (
@@ -568,9 +553,6 @@ export function WorkDesk() {
             <p className="leading-relaxed">{SIDE.business[0][2]}</p>
             {work.stage === "issued" ? <p className="text-seal">A number stored on this phone earlier is not a Verra issuance.</p> : null}
             <p className="border border-rule bg-sheet p-3">{work.name || "No project yet"}. {locked.length} houses. Sample {result.sum} t at {POLICY.perHouse} t each. Not issued.</p>
-            <button type="button" onClick={() => void copy("business-note", companyPacket(null, work.plant || work.name))} className="min-h-12 w-full border border-rule bg-sheet">
-              {copied === "business-note" ? "Copied" : "Copy the email for a water business"}
-            </button>
           </section>
         ) : null}
         {role === "business" && pane === "buyer" ? (
@@ -681,9 +663,6 @@ export function WorkDesk() {
             <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
               VMR0015 on Verra
             </a>
-            <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 w-full border border-rule bg-sheet">
-              {copied === "verra-note" ? "Copied" : "Copy the email for Verra"}
-            </button>
             <p className="text-quiet">This is the last step of the Verra job. The registry login is Verra's. This phone does not have it.</p>
           </section>
         ) : null}
