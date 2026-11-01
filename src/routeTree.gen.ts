@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiCrewRouteImport } from './routes/api/crew'
 import { Route as ApiGuardianRouteImport } from './routes/api/guardian'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCrewRoute = ApiCrewRouteImport.update({
+  id: '/api/crew',
+  path: '/api/crew',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiGuardianRoute = ApiGuardianRouteImport.update({
@@ -25,27 +31,31 @@ const ApiGuardianRoute = ApiGuardianRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/crew': typeof ApiCrewRoute
   '/api/guardian': typeof ApiGuardianRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/crew': typeof ApiCrewRoute
   '/api/guardian': typeof ApiGuardianRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/crew': typeof ApiCrewRoute
   '/api/guardian': typeof ApiGuardianRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/guardian'
+  fullPaths: '/' | '/api/crew' | '/api/guardian'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/guardian'
-  id: '__root__' | '/' | '/api/guardian'
+  to: '/' | '/api/crew' | '/api/guardian'
+  id: '__root__' | '/' | '/api/crew' | '/api/guardian'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiCrewRoute: typeof ApiCrewRoute
   ApiGuardianRoute: typeof ApiGuardianRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/crew': {
+      id: '/api/crew'
+      path: '/api/crew'
+      fullPath: '/api/crew'
+      preLoaderRoute: typeof ApiCrewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/guardian': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiCrewRoute: ApiCrewRoute,
   ApiGuardianRoute: ApiGuardianRoute,
 }
 export const routeTree = rootRouteImport

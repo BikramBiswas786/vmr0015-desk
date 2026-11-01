@@ -51,6 +51,31 @@ export function countsTowardSample(visit: Visit): boolean {
   return visit.status === "accepted" && rulePass(visit);
 }
 
+export function parseVisit(row: unknown): Visit | null {
+  if (!row || typeof row !== "object") return null;
+  const item = row as Partial<Visit>;
+  if (typeof item.id !== "string" || typeof item.house !== "string" || !item.house.trim()) return null;
+  if (item.id.length > 80 || item.house.length > 120) return null;
+  const photo = typeof item.photo === "string" ? item.photo : "";
+  if (photo.length > 150_000) return null;
+  return {
+    id: item.id,
+    house: item.house.trim(),
+    takenAt: typeof item.takenAt === "string" ? item.takenAt.slice(0, 40) : "",
+    boil: asChoice(item.boil, ["yes", "no"] as const, "no"),
+    fuel: asChoice(item.fuel, ["wood", "charcoal", "gas", "none"] as const, "none"),
+    water: asChoice(item.water, ["untested", "pass", "fail"] as const, "untested"),
+    publicPipe: asChoice(item.publicPipe, ["unknown", "yes", "no"] as const, "unknown"),
+    shape: asChoice(item.shape, ["unset", "house", "kiosk"] as const, "unset"),
+    treatment: asChoice(item.treatment, ["unknown", "membrane", "ceramic", "chlorine", "flocculant", "solar", "other"] as const, "unknown"),
+    sealed: asChoice(item.sealed, ["yes", "no"] as const, "no"),
+    persons: typeof item.persons === "number" && item.persons > 0 ? Math.min(30, Math.round(item.persons)) : 0,
+    stove: asChoice(item.stove, ["unset", "none", "some", "all"] as const, "unset"),
+    photo,
+    status: asChoice(item.status, ["in", "accepted", "returned"] as const, "in"),
+  };
+}
+
 function asChoice<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
   return typeof value === "string" && (allowed as readonly string[]).includes(value) ? (value as T) : fallback;
 }
@@ -59,28 +84,11 @@ function load(): Visit[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as Partial<Visit>[];
+    const parsed = JSON.parse(raw) as unknown[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.slice(0, 40).flatMap((row) => {
-      if (!row || typeof row.id !== "string" || typeof row.house !== "string") return [];
-      return [
-        {
-          id: row.id,
-          house: row.house,
-          takenAt: typeof row.takenAt === "string" ? row.takenAt : "",
-          boil: asChoice(row.boil, ["yes", "no"] as const, "no"),
-          fuel: asChoice(row.fuel, ["wood", "charcoal", "gas", "none"] as const, "none"),
-          water: asChoice(row.water, ["untested", "pass", "fail"] as const, "untested"),
-          publicPipe: asChoice(row.publicPipe, ["unknown", "yes", "no"] as const, "unknown"),
-          shape: asChoice(row.shape, ["unset", "house", "kiosk"] as const, "unset"),
-          treatment: asChoice(row.treatment, ["unknown", "membrane", "ceramic", "chlorine", "flocculant", "solar", "other"] as const, "unknown"),
-          sealed: asChoice(row.sealed, ["yes", "no"] as const, "no"),
-          persons: typeof row.persons === "number" && row.persons > 0 ? Math.round(row.persons) : 0,
-          stove: asChoice(row.stove, ["unset", "none", "some", "all"] as const, "unset"),
-          photo: typeof row.photo === "string" ? row.photo : "",
-          status: asChoice(row.status, ["in", "accepted", "returned"] as const, "in"),
-        },
-      ];
+    return parsed.slice(0, 500).flatMap((row) => {
+      const visit = parseVisit(row);
+      return visit ? [visit] : [];
     });
   } catch {
     return [];
@@ -101,7 +109,7 @@ export function useVisits() {
     try {
       localStorage.setItem(KEY, JSON.stringify(visits));
     } catch {
-      setVisits((current) => current.slice(0, -1));
+      // A shared list can be larger than this phone can store. Keep it in memory.
     }
   }, [visits, ready]);
 

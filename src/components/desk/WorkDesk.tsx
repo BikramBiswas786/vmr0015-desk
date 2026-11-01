@@ -109,6 +109,8 @@ export function WorkDesk() {
   const [askQ, setAskQ] = useState("");
   const [askA, setAskA] = useState("");
   const [asking, setAsking] = useState(false);
+  const [crewCode, setCrewCode] = useState("");
+  const [crewNote, setCrewNote] = useState("");
   const [liveHash, setLiveHash] = useState("");
 
   const counted = visits.filter(countsTowardSample);
@@ -118,6 +120,45 @@ export function WorkDesk() {
   const chainState =
     work.chain === "" ? "none" : liveHash === "" ? "pending" : liveHash === work.chain ? "match" : "break";
   const sampleTonnes = tonnesOf(work.stage === "open" ? counted.length : locked.length);
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem("vmr0015-crew-code") ?? "";
+    if (saved) setCrewCode(saved);
+  }, []);
+
+  useEffect(() => {
+    if (!crewCode || crewCode.length < 8) return;
+    let stop = false;
+    async function pull() {
+      const response = await fetch(`/api/crew?code=${encodeURIComponent(crewCode)}`);
+      if (stop) return;
+      if (response.status === 401) {
+        setCrewNote("That crew code is wrong.");
+        return;
+      }
+      if (!response.ok) {
+        setCrewNote("The shared list is off on this server. Houses stay on this phone.");
+        return;
+      }
+      const body = (await response.json()) as { houses?: Visit[] };
+      if (!stop && Array.isArray(body.houses)) {
+        setVisits(body.houses);
+        setCrewNote(`${body.houses.length} houses on the shared list.`);
+      }
+    }
+    void pull();
+    const timer = setInterval(() => void pull(), 8000);
+    return () => {
+      stop = true;
+      clearInterval(timer);
+    };
+  }, [crewCode, setVisits]);
+
+  function keepCode(value: string) {
+    const next = value.trim();
+    setCrewCode(next);
+    sessionStorage.setItem("vmr0015-crew-code", next);
+  }
 
   useEffect(() => {
     if (!work.chain) return;
@@ -142,12 +183,29 @@ export function WorkDesk() {
       takenAt: new Date().toISOString(),
       status: "in",
     };
-    setVisits((current) => [next, ...current].slice(0, 40));
+    setVisits((current) => [next, ...current.filter((visit) => visit.id !== next.id)].slice(0, 500));
+    if (!crewCode) {
+      setCrewNote("Type the crew code. Until then this house stays on this phone.");
+      return;
+    }
+    void fetch("/api/crew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: crewCode, visit: next }),
+    }).then((response) => {
+      setCrewNote(response.ok ? "Saved on the shared list." : "Not saved on the shared list. It is still on this phone.");
+    });
   }
 
   function mark(id: string, status: Visit["status"]) {
     if (work.visitIds.includes(id)) return;
     setVisits((current) => current.map((visit) => (visit.id === id ? { ...visit, status } : visit)));
+    if (!crewCode) return;
+    void fetch("/api/crew", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: crewCode, id, status }),
+    });
   }
 
   async function lockDescription() {
@@ -310,7 +368,12 @@ export function WorkDesk() {
         {role === "who" ? (
           <section className="max-w-xl">
             <h1 className="font-serif text-4xl leading-none">Who are you</h1>
-            <p className="mt-4 text-sm leading-relaxed">Tomorrow, start as the field worker and walk one house. You can also copy three notes. The Guardian note sends the policy file. The Verra note says this is not a project registration. The business note says this is not a credit for sale. None of them opens a registry account.</p>
+            <p className="mt-4 text-sm leading-relaxed">Tomorrow, the field workers open this same page and type the crew code you give them. Their houses then sit on one shared list, not on one phone. The list is not a Verra project and not a credit.</p>
+            <label className="mt-4 block text-sm">
+              Crew code
+              <input value={crewCode} onChange={(event) => keepCode(event.target.value)} autoComplete="off" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            {crewNote ? <p className="mt-2 text-sm text-quiet">{crewNote}</p> : null}
             <div className="mt-4 grid gap-2">
               <button type="button" onClick={() => void copy("guardian-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "guardian-note" ? "Copied" : "Copy the note for the Guardian team"}</button>
               <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "verra-note" ? "Copied" : "Copy the note for Verra"}</button>
@@ -330,6 +393,7 @@ export function WorkDesk() {
         {role === "drum" ? (
           <>
             <p className="max-w-xl text-sm leading-relaxed">{SIDE.drum.find(([id]) => id === pane)?.[2]}</p>
+            {crewNote ? <p className="mb-2 max-w-xl text-sm text-quiet">{crewNote}</p> : null}
             <FieldWalk onSave={saveHouse} saved={visits.length} ready={counted.length} step={pane} onStep={setPane} />
           </>
         ) : null}
