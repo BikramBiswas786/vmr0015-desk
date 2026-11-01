@@ -27,6 +27,7 @@ export type Work = {
   issuedSum: string;
   issuedWhole: number;
   issuedAt: string;
+  serial: string;
   offers: Offer[];
 };
 
@@ -44,6 +45,7 @@ export const EMPTY_WORK: Work = {
   issuedSum: "",
   issuedWhole: 0,
   issuedAt: "",
+  serial: "",
   offers: [],
 };
 
@@ -80,6 +82,7 @@ export function loadWork(): Work {
       issuedSum: typeof parsed.issuedSum === "string" ? parsed.issuedSum : "",
       issuedWhole: typeof parsed.issuedWhole === "number" ? parsed.issuedWhole : 0,
       issuedAt: typeof parsed.issuedAt === "string" ? parsed.issuedAt : "",
+      serial: typeof parsed.serial === "string" ? parsed.serial : "",
       offers: Array.isArray(parsed.offers) ? parsed.offers.slice(0, 20) : [],
     };
   } catch {

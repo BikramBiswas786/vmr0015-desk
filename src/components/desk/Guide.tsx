@@ -18,7 +18,7 @@ export function Guide({ onGo, onDemo }: { onGo: (next: Go) => void; onDemo: () =
       <p className="text-xs tracking-widest text-quiet uppercase">How to use this</p>
       <h1 className="mt-2 font-serif text-4xl leading-none">Guide</h1>
       <p className="mt-4 text-sm leading-relaxed">
-        Each page does one job. Load the demo, then open the pages in order and read only that page.
+        Each page does one job. Load the demo. It ends on Offers, with a buyer note and a serial that is not on the Verra registry.
       </p>
       <button type="button" onClick={onDemo} className="mt-4 min-h-12 bg-ink px-4 font-medium text-paper">
         Load the Balurghat demo

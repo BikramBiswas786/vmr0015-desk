@@ -62,6 +62,9 @@ export function WorkDesk() {
   const [token, setToken] = useState("");
   const [guardianNote, setGuardianNote] = useState("");
   const [copied, setCopied] = useState("");
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerTonnes, setBuyerTonnes] = useState("");
+  const [buyerContact, setBuyerContact] = useState("");
   const [liveHash, setLiveHash] = useState("");
 
   const counted = visits.filter(countsTowardSample);
@@ -112,7 +115,7 @@ export function WorkDesk() {
   }
 
   function takeBack() {
-    setWork({ ...work, stage: "open", visitIds: [], chain: "", plant: "", validationNote: "", monitoringNote: "", issuedSum: "", issuedWhole: 0, issuedAt: "", offers: [] });
+    setWork({ ...work, stage: "open", visitIds: [], chain: "", plant: "", validationNote: "", monitoringNote: "", issuedSum: "", issuedWhole: 0, issuedAt: "", serial: "", offers: [] });
     setLiveHash("");
   }
 
@@ -190,10 +193,31 @@ export function WorkDesk() {
       criteria,
       validationNote: "Demo only. This is not a VVB opinion.",
       monitoringNote: "Demo only. Four people, wood, chlorine drum, water passed.",
-      offers: [],
+      serial: "DEMO-NOT-A-VERRA-SERIAL",
+      offers: [
+        {
+          institution: "Demo buyer",
+          tonnes: "0.519",
+          contact: "Recorded on this phone. Not sent to the registry.",
+          at: new Date().toISOString(),
+        },
+      ],
     });
     setLiveHash(chain);
-    setRole("field");
+    setRole("buyer");
+  }
+
+  function recordBuyer() {
+    const who = buyerName.trim();
+    const tonnes = Number(buyerTonnes);
+    if (!work.serial.trim() || !who || !buyerContact.trim() || !Number.isFinite(tonnes) || tonnes <= 0) return;
+    setWork({
+      ...work,
+      offers: [{ institution: who, tonnes: tonnes.toFixed(3), contact: buyerContact.trim(), at: new Date().toISOString() }, ...work.offers].slice(0, 20),
+    });
+    setBuyerName("");
+    setBuyerTonnes("");
+    setBuyerContact("");
   }
 
   const requestText = [
@@ -401,10 +425,13 @@ export function WorkDesk() {
           <section className="mt-4 max-w-xl space-y-3 text-sm">
             <h1 className="font-serif text-3xl leading-none">Registry</h1>
             <p>The public Verra registry is where a registered project and a VCU serial can be looked up. This demo has no project ID and no serial. Viewing the registry does not need a login. Registering a project, or asking Verra to issue, does. That account is Verra’s, not a login stored in this app.</p>
-            <p className="border border-rule bg-sheet p-3">{work.name || "No project name yet"}. No Verra ID.</p>
+            <p className="border border-rule bg-sheet p-3">{work.name || "No project name yet"}. {work.serial ? `Serial on this phone: ${work.serial}. It was not issued by Verra.` : "No serial copied from the registry yet."}</p>
             <a href="https://registry.verra.org/verra" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">
               Open the Verra registry
             </a>
+            <button type="button" onClick={() => setRole("buyer")} className="min-h-12 w-full border border-rule bg-sheet">
+              Then record a buyer
+            </button>
           </section>
         ) : null}
 
@@ -416,6 +443,9 @@ export function WorkDesk() {
               {work.stage === "verified" ? "A verification opinion is recorded here. It is not Verra’s approval." : STAGE_LINE[work.stage]} Sample on this phone: {result.sum} t. Not a serial.
             </p>
             <button type="button" disabled className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">Deposit VCUs</button>
+            <button type="button" onClick={() => setRole("buyer")} className="min-h-12 w-full border border-rule bg-sheet">
+              The desk ends at Offers
+            </button>
             <p className="text-quiet">Deposit stays closed. Only Verra generates the serials, after it has approved the verification.</p>
           </section>
         ) : null}
@@ -426,10 +456,38 @@ export function WorkDesk() {
 
         {role === "buyer" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <p>A buyer can take a VCU only after Verra has deposited it in a registry account. This desk has no serial, so it cannot assign tonnes.</p>
+            <p>Offers records a buyer against a serial you copied from the Verra registry. It does not transfer the credit. The transfer is done in that registry account, by the account holder.</p>
+            <label className="block">
+              Serial from the registry
+              <input value={work.serial} onChange={(event) => setWork({ ...work, serial: event.target.value })} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            {work.serial.trim() ? (
+              <>
+                <label className="block">
+                  Buyer
+                  <input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+                </label>
+                <label className="block">
+                  Tonnes
+                  <input value={buyerTonnes} onChange={(event) => setBuyerTonnes(event.target.value)} inputMode="decimal" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+                </label>
+                <label className="block">
+                  Contact
+                  <input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+                </label>
+                <button type="button" onClick={recordBuyer} className="min-h-12 w-full bg-ink font-medium text-paper">
+                  Record the buyer
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={() => setRole("registry")} className="min-h-12 w-full border border-rule bg-sheet">
+                Open the registry and copy a serial first
+              </button>
+            )}
+            {work.serial.startsWith("DEMO") ? <p className="text-quiet">Demo finished. The house, the check, the lock, and this buyer note are on this phone. Verra was not contacted.</p> : null}
             {work.offers.map((offer) => (
               <p key={`${offer.at}-${offer.institution}`} className="border border-rule bg-sheet p-3">
-                {offer.institution} noted {offer.tonnes} t on {offer.at.slice(0, 10)}. Not a VCU. {offer.contact}
+                {offer.institution}. {offer.tonnes} t against {work.serial || "no serial"}. {offer.at.slice(0, 10)}. {offer.contact}
               </p>
             ))}
           </section>
