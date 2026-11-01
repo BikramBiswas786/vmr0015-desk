@@ -1,39 +1,59 @@
 type Go = "home" | "field" | "checker" | "developer" | "guardian" | "verra" | "issue" | "markets";
 
-const STEPS: { title: string; body: string; go?: Go; action?: string }[] = [
+const STEPS: { title: string; who: string; body: string; go?: Go; action?: string }[] = [
   {
-    title: "Download the right file",
-    body: "Open Files. If the project starts before 1 January 2027, download v3.1 A. If it starts on or after that date, download v3.1 B. v3.2 is a backup. Do not import both A and B for the same project.",
+    title: "Download one policy file",
+    who: "The project developer",
+    body: "Open Files. Start date before 1 January 2027: download v3.1 A. On or after that date: download v3.1 B. v3.2 is a backup. Do not import both A and B for the same project.",
     go: "home",
     action: "Open Files",
   },
   {
-    title: "Import it in Guardian",
-    body: "This app cannot import the file for you. Open Managed Guardian Service, choose Manage Policies, and import the file you downloaded. Guardian then shows two roles: Project Proponent and VVB. The registry owns the policy. Ask Guardian to list policies only after you have an address and a token.",
+    title: "Import that file in Guardian",
+    who: "The project developer",
+    body: "This phone cannot import it. In Managed Guardian Service, open Manage Policies and import the file. Guardian then has two roles, Project Proponent and VVB. The calculation lives in Guardian’s two math blocks, not on this phone.",
     go: "guardian",
     action: "Open Guardian",
   },
   {
-    title: "Record each house",
-    body: "Open Houses. Answer one question at a time. The house must boil drinking water with wood or charcoal. There must be no public safe-water pipe already there. The water test must pass, and there must be a photo. A drum counts only if the treatment point uses chlorine, a flocculant powder, or solar, and the drum is sealed or the disinfectant is still in the water. A house that fails is kept, but it cannot enter a description.",
+    title: "Walk the house",
+    who: "The drum boy, or whoever is at the door",
+    body: "Open Houses. One question at a time. No equation. How many people. Is there already a public safe-water pipe. Do they boil. Wood or charcoal, or not. Is an improved stove doing the boiling. House filter or drum. What treats the water. Did the water test pass. Take a photo. A failed house is kept and cannot be locked.",
     go: "field",
     action: "Open Houses",
   },
   {
-    title: "Someone else checks the house",
-    body: "Open Check. Accept a house only when every rule passes. Do not accept your own photo just because it exists. Send it back if the test failed, the fuel is gas, or a public pipe is already there.",
+    title: "A second person looks at the photo",
+    who: "Not the person who took it",
+    body: "Open Check while houses are still being collected. Accept only when every answer passes. Send it back if the pipe is already there, the fuel is gas, the test failed, or the photo is missing. This is not the VVB yet.",
     go: "checker",
     action: "Open Check",
   },
   {
-    title: "Lock one project description",
-    body: "Open Describe. Name the project and the treatment point the drums leave from. Lock only the accepted houses. That lock is a description for VMR0015. It is not a Verra serial, and it is not an Indian certificate.",
+    title: "Answer the seven applicability questions",
+    who: "The project developer",
+    body: "Open Describe. The questions are the ones in the policy, in ordinary words. One Not met, or a REDD+ answer of Not assessed, voids the calculation inside Guardian. The project name can be locked only after all seven pass. You do not multiply anything.",
     go: "developer",
     action: "Open Describe",
   },
   {
-    title: "Issue the tonnes",
-    body: "Open Issue after the monitoring note is verified. Each house that passed counts at the policy rate, 0.519 tonnes. The file mints whole tonnes, one report. When the sum reaches 1, issue it, then record the buyer under Offers. Policy file: waiting for library approval.",
+    title: "Type the same facts into Guardian",
+    who: "The project developer",
+    body: "Guardian’s project description is the long form. Copy the locked houses into the survey rows: people, boiling, stove, no public network, the device. Guardian’s math block computes the tonnes from those rows. This phone’s 0.519 figure is the old test sample. It is not this project’s result.",
+    go: "guardian",
+    action: "Open Guardian",
+  },
+  {
+    title: "The VVB gives an opinion",
+    who: "An approved validation and verification body",
+    body: "After the description is locked, Check is the VVB’s screen. Validated, or send it back. Later, a positive verification opinion. The project developer does not validate their own project. The opinion is not Verra’s approval.",
+    go: "checker",
+    action: "Open Check",
+  },
+  {
+    title: "Ask Verra, and stop",
+    who: "The project proponent asks. Verra decides.",
+    body: "Open Issue. Copy the registration request and submit it yourself on the Verra registry, with the fee. Verra reviews it. Only after Verra approves a verification does Verra deposit VCUs and create the serials. Deposit on this phone stays closed. Offers cannot assign tonnes.",
     go: "issue",
     action: "Open Issue",
   },
@@ -45,22 +65,13 @@ export function Guide({ onGo }: { onGo: (next: Go) => void }) {
       <p className="text-xs tracking-widest text-quiet uppercase">How to use this</p>
       <h1 className="mt-2 font-serif text-4xl leading-none">Guide</h1>
       <p className="mt-4 text-sm leading-relaxed">
-        This desk runs one Verra method from the house to the issued tonnes: safe drinking water that replaces boiling with wood. Follow the steps on the left, in order.
+        Guardian already runs the policy. This phone does not replace it. It is the walk for the person who will never open Guardian, and the checklist that stops a bad house before anyone touches the equation.
       </p>
 
-      <h2 className="mt-8 font-serif text-2xl">Policy status</h2>
+      <h2 className="mt-8 font-serif text-2xl">Who calculates</h2>
       <p className="mt-2 text-sm leading-relaxed">
-        The policy file is waiting for library approval. This desk already treats it as the rule. A house that passes is counted. A verified monitoring report can be issued as whole tonnes. The same house is not also claimed on India’s plant-certificate market.
+        Not the drum boy. Not a new developer. Guardian’s math block does it, from the survey rows, after the seven applicability answers pass. Verra does not calculate either. Verra checks the VVB’s report and, if it approves, deposits the serials.
       </p>
-
-      <h2 className="mt-8 font-serif text-2xl">Who does what</h2>
-      <ul className="mt-3 space-y-2 text-sm leading-relaxed">
-        <li>The person at the house takes the photo and answers the questions.</li>
-        <li>A different person checks the answers.</li>
-        <li>The project developer locks those houses into one description.</li>
-        <li>Issue writes the whole tonnes once the sum reaches 1.</li>
-        <li>Offers records who is taking those tonnes.</li>
-      </ul>
 
       <ol className="mt-8 space-y-6">
         {STEPS.map((step, index) => (
@@ -68,6 +79,7 @@ export function Guide({ onGo }: { onGo: (next: Go) => void }) {
             <p className="font-serif text-xl">
               {index + 1}. {step.title}
             </p>
+            <p className="mt-1 text-sm text-quiet">{step.who}</p>
             <p className="mt-2 text-sm leading-relaxed">{step.body}</p>
             {step.go && step.action ? (
               <button type="button" onClick={() => onGo(step.go as Go)} className="mt-3 min-h-11 border border-rule bg-sheet px-3 text-sm">
@@ -77,14 +89,6 @@ export function Guide({ onGo }: { onGo: (next: Go) => void }) {
           </li>
         ))}
       </ol>
-
-      <h2 className="mt-8 font-serif text-2xl">If you are stuck</h2>
-      <p className="mt-2 text-sm leading-relaxed">
-        A house that says it cannot count is working correctly. Change the answer only if the fact was wrong. Markets explains why listing stays closed. Notes is the longer paper, if a reviewer asks for it.
-      </p>
-      <button type="button" onClick={() => onGo("markets")} className="mt-3 min-h-11 border border-rule bg-sheet px-3 text-sm">
-        Open Markets
-      </button>
     </article>
   );
 }
