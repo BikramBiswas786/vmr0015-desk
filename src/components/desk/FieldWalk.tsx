@@ -34,12 +34,10 @@ function stepsFor(draft: Draft): string[] {
 }
 
 export function FieldWalk({
-  locked,
   onSave,
   saved,
   ready,
 }: {
-  locked: boolean;
   onSave: (draft: Draft) => void;
   saved: number;
   ready: number;
@@ -67,10 +65,6 @@ export function FieldWalk({
 
   if (!shown) {
     return <p className="mt-6 text-sm text-quiet">Opening the visit.</p>;
-  }
-
-  if (locked) {
-    return <p className="border border-rule bg-sheet p-4 text-sm">This house is already in the description. The next step is the button above.</p>;
   }
 
   return (

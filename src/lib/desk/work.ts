@@ -13,6 +13,14 @@ export type Offer = {
   at: string;
 };
 
+export type Report = {
+  name: string;
+  plant: string;
+  visitIds: string[];
+  sum: string;
+  at: string;
+};
+
 export type Work = {
   name: string;
   starts: string;
@@ -29,6 +37,7 @@ export type Work = {
   issuedAt: string;
   serial: string;
   offers: Offer[];
+  reports: Report[];
 };
 
 export const EMPTY_WORK: Work = {
@@ -47,6 +56,7 @@ export const EMPTY_WORK: Work = {
   issuedAt: "",
   serial: "",
   offers: [],
+  reports: [],
 };
 
 const STAGES: Stage[] = ["open", "described", "validated", "monitoring", "verified", "issued"];
@@ -84,6 +94,7 @@ export function loadWork(): Work {
       issuedAt: typeof parsed.issuedAt === "string" ? parsed.issuedAt : "",
       serial: typeof parsed.serial === "string" ? parsed.serial : "",
       offers: Array.isArray(parsed.offers) ? parsed.offers.slice(0, 20) : [],
+      reports: Array.isArray(parsed.reports) ? parsed.reports.filter((row) => row && Array.isArray(row.visitIds)).slice(0, 20) : [],
     };
   } catch {
     return EMPTY_WORK;

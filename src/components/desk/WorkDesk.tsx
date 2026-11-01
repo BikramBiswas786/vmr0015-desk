@@ -8,7 +8,6 @@ import { Markets } from "@/components/desk/Markets";
 import { Guide } from "@/components/desk/Guide";
 import { PolicyHome } from "@/components/desk/PolicyHome";
 import { Paper } from "@/components/desk/Paper";
-import { Path, place } from "@/components/desk/Path";
 import { useEffect, useState } from "react";
 
 const RATE = Number(POLICY.perHouse);
@@ -64,7 +63,6 @@ export function WorkDesk() {
   const chainState =
     work.chain === "" ? "none" : liveHash === "" ? "pending" : liveHash === work.chain ? "match" : "break";
   const sampleTonnes = tonnesOf(work.stage === "open" ? counted.length : locked.length);
-  const waiting = visits.filter((visit) => visit.status !== "accepted").length;
 
   useEffect(() => {
     if (!work.chain) return;
@@ -75,7 +73,7 @@ export function WorkDesk() {
 
   function saveHouse(draft: Pick<Visit, "house" | "boil" | "fuel" | "water" | "publicPipe" | "shape" | "treatment" | "sealed" | "persons" | "stove" | "photo">) {
     const label = draft.house.trim();
-    if (!label || !draft.photo || work.stage !== "open") return;
+    if (!label || !draft.photo) return;
     const next: Visit = {
       ...draft,
       id: crypto.randomUUID(),
@@ -87,7 +85,7 @@ export function WorkDesk() {
   }
 
   function mark(id: string, status: Visit["status"]) {
-    if (work.stage !== "open") return;
+    if (work.visitIds.includes(id)) return;
     setVisits((current) => current.map((visit) => (visit.id === id ? { ...visit, status } : visit)));
   }
 
@@ -218,18 +216,6 @@ export function WorkDesk() {
     });
   }
 
-  function goNext() {
-    const at = place(work.stage, counted.length, waiting);
-    if (at === 0) setRole("field");
-    else if (at === 1) setRole("checker");
-    else if (at === 2) setRole("developer");
-    else if (at === 3) advance("validated", { validationNote: "Validated" });
-    else if (at === 4) advance("monitoring", { monitoringNote: note.trim() });
-    else if (at === 5) advance("verified");
-    else if (at === 6) void issueCredit();
-    else setRole("buyer");
-  }
-
   function recordBuyer() {
     const who = buyerName.trim();
     const tonnes = Number(buyerTonnes);
@@ -274,7 +260,6 @@ export function WorkDesk() {
         ))}
       </nav>
       <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-8">
-        <Path stage={work.stage} accepted={counted.length} waiting={waiting} sum={work.stage === "issued" ? work.issuedSum : result.sum} note={note} onNote={setNote} onNext={goNext} />
         {role === "guide" ? <Guide onGo={(next) => setRole(next)} onDemo={() => void loadDemo()} /> : null}
         {role === "home" ? <PolicyHome onWork={() => setRole("field")} /> : null}
 
@@ -285,14 +270,15 @@ export function WorkDesk() {
                 {visit.house}. {visit.persons} people. {visit.fuel}. {visit.shape === "kiosk" ? "Drum" : "House filter"}, {visit.treatment}. {visit.status}.
               </p>
             ))}
-            <FieldWalk locked={work.stage !== "open"} onSave={saveHouse} saved={visits.length} ready={counted.length} />
+            <p className="mb-3 text-sm">A new photo stays out of {work.name || "the open description"}. It waits for the next one.</p>
+            <FieldWalk onSave={saveHouse} saved={visits.length} ready={counted.length} />
           </>
         ) : null}
 
-        {role === "developer" ? (
+        {role === "developer" && work.stage === "open" ? (
           <section className="mt-4 space-y-3 text-sm">
             <h2 className="font-serif text-3xl leading-tight">Project description</h2>
-            <p>Name the project, then use the button on the chart for the next step.</p>
+            <p>Name the project, then lock the houses.</p>
             {work.stage === "open" ? (
               <>
                 <Criteria
@@ -327,27 +313,19 @@ export function WorkDesk() {
                   </>
                 ) : null}
               </>
-            ) : (
-              <>
-                <p className="border border-rule bg-sheet p-3">{work.name}. {work.plant}. Template {work.setId}. {work.visitIds.length} houses. {sampleTonnes} t. {work.stage === "issued" ? `Issued ${work.issuedSum} t.` : "Use the button on the chart."}</p>
-                {work.stage === "validated" ? (
-                  <>
-                    <label className="block">
-                      Monitoring note
-                      <textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-24 w-full border border-rule bg-sheet px-3 py-2" />
-                    </label>
-                    <button type="button" disabled={!note.trim()} onClick={() => advance("monitoring", { monitoringNote: note.trim() })} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-                      Send the monitoring note
-                    </button>
-                  </>
-                ) : null}
-                {work.stage === "described" ? (
-                  <button type="button" onClick={takeBack} className="min-h-12 w-full border border-rule bg-sheet">
-                    Take the description back
-                  </button>
-                ) : null}
-              </>
-            )}
+            ) : null}
+          </section>
+        ) : null}
+        {role === "developer" && work.stage === "validated" ? (
+          <section className="mt-4 space-y-3 text-sm">
+            <h2 className="font-serif text-3xl leading-tight">Monitoring</h2>
+            <label className="block">
+              Monitoring note
+              <textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-24 w-full border border-rule bg-sheet px-3 py-2" />
+            </label>
+            <button type="button" disabled={!note.trim()} onClick={() => advance("monitoring", { monitoringNote: note.trim() })} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+              Save the note
+            </button>
           </section>
         ) : null}
 
@@ -377,7 +355,7 @@ export function WorkDesk() {
             ) : null}
             {work.stage === "described" ? (
               <>
-                <p>This step belongs to a validation and verification body, not to the project proponent. The opinion must be Validated before a registration request can be prepared. {work.name}. {locked.length} of {work.visitIds.length} locked houses still pass.</p>
+                <p>{work.name}. {locked.length} houses. {sampleTonnes} t.</p>
                 <label className="block">
                   Validation note
                   <textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-24 w-full border border-rule bg-sheet px-3 py-2" />
@@ -390,14 +368,14 @@ export function WorkDesk() {
             ) : null}
             {work.stage === "monitoring" ? (
               <>
-                <p>Read the monitoring note, then press Verify on the chart.</p>
+                <p>{work.monitoringNote}</p>
                 <p className="border border-rule bg-sheet p-3">{work.monitoringNote}</p>
                 <button type="button" onClick={() => advance("verified")} className="min-h-12 w-full bg-ink font-medium text-paper">Positive verification opinion</button>
                 <button type="button" onClick={() => advance("validated")} className="min-h-12 w-full border border-rule bg-sheet">Send the note back</button>
               </>
             ) : null}
             {work.stage === "validated" ? <p className="text-quiet">Waiting on the developer’s monitoring note.</p> : null}
-            {work.stage === "verified" || work.stage === "issued" ? <p className="text-quiet">Verified. The next button issues the tonnes.</p> : null}
+            {work.stage === "verified" || work.stage === "issued" ? <p className="text-quiet">Verified. Open Issue.</p> : null}
           </section>
         ) : null}
 
@@ -459,8 +437,15 @@ export function WorkDesk() {
             <h1 className="font-serif text-3xl leading-none">Issue</h1>
             {work.stage === "issued" ? (
               <p className="border border-rule bg-sheet p-3">{work.name}. Issued {work.issuedSum} t on {work.issuedAt.slice(0, 10)}. {locked.length} houses, {POLICY.perHouse} t each.</p>
+            ) : work.stage === "verified" ? (
+              <>
+                <p>{work.name}. {locked.length} houses. {result.sum} t.</p>
+                <button type="button" onClick={() => void issueCredit()} className="min-h-12 w-full bg-ink font-medium text-paper">
+                  Issue {result.sum} t
+                </button>
+              </>
             ) : (
-              <p>{locked.length} houses. {result.sum} t. Press the button on the chart when the step says Issue.</p>
+              <p>Open Check and verify the monitoring note first.</p>
             )}
           </section>
         ) : null}

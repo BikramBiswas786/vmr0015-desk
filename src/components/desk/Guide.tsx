@@ -8,8 +8,8 @@ const STEPS: { title: string; body: string; go: Go; action: string }[] = [
   { title: "Guardian", body: "Import the file in Guardian and paste the rows. This page only asks a Guardian you already run. There is no saved login.", go: "guardian", action: "Open Guardian" },
   { title: "Verra", body: "Copy the request and submit it yourself on the Project Hub.", go: "verra", action: "Open Verra" },
   { title: "Registry", body: "Look up a public project or serial. This demo has neither.", go: "registry", action: "Open Registry" },
-  { title: "Issue", body: "When the chart says Issue, the button writes the tonnes. One house at the policy rate is 0.519 t.", go: "issue", action: "Open Issue" },
-  { title: "Markets", body: "Compare the methods. The tonnes for this project are issued from the chart.", go: "markets", action: "Open Markets" },
+  { title: "Issue", body: "After Check verifies the note, Issue writes the tonnes. One house at the policy rate is 0.519 t.", go: "issue", action: "Open Issue" },
+  { title: "Markets", body: "Compare the methods.", go: "markets", action: "Open Markets" },
 ];
 
 export function Guide({ onGo, onDemo }: { onGo: (next: Go) => void; onDemo: () => void }) {
@@ -18,7 +18,7 @@ export function Guide({ onGo, onDemo }: { onGo: (next: Go) => void; onDemo: () =
       <p className="text-xs tracking-widest text-quiet uppercase">How to use this</p>
       <h1 className="mt-2 font-serif text-4xl leading-none">Guide</h1>
       <p className="mt-4 text-sm leading-relaxed">
-        The chart at the top is the whole job. The dark button is the next step. Press it. Do not hunt through the left menu.
+        Use the menu on the left. Each name is one page.
       </p>
       <button type="button" onClick={onDemo} className="mt-4 min-h-12 bg-ink px-4 font-medium text-paper">
         Load Balurghat, ward 3
