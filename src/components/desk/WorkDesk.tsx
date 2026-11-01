@@ -287,11 +287,17 @@ export function WorkDesk() {
     setBuyerContact("");
   }
 
+  const policyFile = FILES.find((file) => file.importThis && file.id === (work.setId || "A")) ?? FILES[0];
   const requestText = [
-    `${work.name || "Untitled"}. ${work.plant || "No treatment point"}.`,
-    work.plant ? `Treatment point: ${work.plant}.` : "No treatment point named.",
+    `Policy: ${policyFile.guardianName}.`,
+    `File: ${policyFile.name}.`,
+    `SHA-256: ${policyFile.sha}.`,
+    `Methodology: ${POLICY.method}, ${POLICY.methodName}. A revision of ${POLICY.parent}.`,
+    `Template: ${policyFile.when}.`,
+    `The file's own version field is Dry Run. This packet is not a Verra project description and not a VCU.`,
+    `${work.name || "Untitled"}. ${work.plant || "No treatment point named."}.`,
     `Applicability: ${criteriaPass(work.criteria) ? "the seven answers pass" : "the seven answers are missing or void the calculation"}.`,
-    `Template ${work.setId}. Houses in the lock: ${work.visitIds.length}. Sample ${sampleTonnes} t at ${POLICY.perHouse} t each.`,
+    `Houses in the lock: ${work.visitIds.length}. Sample ${sampleTonnes} t at ${POLICY.perHouse} t each. That rate is the test file, not this project's calculation.`,
     work.chain ? `Chain ${work.chain}` : "No chain yet.",
     chainState === "match" ? "The houses still match that chain." : chainState === "pending" ? "The chain is still being checked." : chainState === "break" ? "The houses do not match the locked chain." : "No chain yet.",
     "",
