@@ -3,24 +3,27 @@ import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
 import { Markets } from "@/components/desk/Markets";
+import { Guide } from "@/components/desk/Guide";
 import { PolicyHome } from "@/components/desk/PolicyHome";
 import { Paper } from "@/components/desk/Paper";
 import { useState } from "react";
 
 const RATE = Number(POLICY.perHouse);
 
-const ROLES = [
-  ["field", "Field crew"],
-  ["developer", "Developer"],
-  ["checker", "Checker"],
+const NAV = [
+  ["guide", "Guide"],
+  ["home", "Files"],
+  ["field", "Houses"],
+  ["checker", "Check"],
+  ["developer", "Describe"],
   ["guardian", "Guardian"],
   ["verra", "Verra"],
-  ["buyer", "Buyer"],
   ["markets", "Markets"],
-  ["paper", "Paper"],
+  ["buyer", "Offers"],
+  ["paper", "Notes"],
 ] as const;
 
-type Role = (typeof ROLES)[number][0] | "home";
+type Role = (typeof NAV)[number][0];
 
 const APPS = [
   { href: GUARDIAN_URL, label: "Managed Guardian Service, where a policy is imported" },
@@ -44,7 +47,7 @@ function tonnesOf(count: number): string {
 export function WorkDesk() {
   const { visits, setVisits } = useVisits();
   const { work, setWork } = useWork();
-  const [role, setRole] = useState<Role>("home");
+  const [role, setRole] = useState<Role>("guide");
   const [name, setName] = useState("");
   const [plant, setPlant] = useState("");
   const [starts, setStarts] = useState("");
@@ -180,42 +183,32 @@ export function WorkDesk() {
   ].join("\n");
 
   return (
-    <div className="min-h-dvh bg-ink text-ink">
-      <div className={`mx-auto flex min-h-dvh w-full flex-col bg-paper px-5 pt-6 pb-10 ${role === "home" ? "max-w-2xl" : "max-w-lg"}`}>
+    <div className="flex min-h-dvh bg-paper text-ink">
+      <nav aria-label="Sections" className="sticky top-0 flex h-dvh w-28 shrink-0 flex-col gap-1 overflow-y-auto border-r border-rule bg-sheet px-2 py-4 sm:w-44">
+        <p className="px-2 pb-3 font-serif text-xl leading-tight">VMR0015</p>
+        {NAV.map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            aria-current={role === id ? "page" : undefined}
+            onClick={() => {
+              setRole(id);
+              if (id === "guardian" || id === "buyer" || id === "verra") void refreshHash();
+            }}
+            className={`min-h-11 px-2 text-left text-sm ${role === id ? "bg-ink text-paper" : ""}`}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+      <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-8">
+        {role === "guide" ? <Guide onGo={(next) => setRole(next)} /> : null}
         {role === "home" ? <PolicyHome onWork={() => setRole("field")} /> : null}
-        {role !== "home" ? (
-        <>
-        <header>
-          <div className="flex items-baseline justify-between gap-4">
-            <h1 className="font-serif text-3xl leading-none">Working desk</h1>
-            <button type="button" onClick={() => setRole("home")} className="min-h-11 text-sm text-quiet">
-              Policy
-            </button>
-          </div>
-          <ol className="mt-5 flex gap-1" aria-label="Case stage">
-            {RAIL.map(([id]) => (
-              <li key={id} className={`h-1 flex-1 ${work.stage === id || RAIL.findIndex(([stage]) => stage === work.stage) > RAIL.findIndex(([stage]) => stage === id) ? "bg-ink" : "bg-rule"}`} />
-            ))}
-          </ol>
-          <p className="mt-2 text-sm">{RAIL.find(([id]) => id === work.stage)?.[1]}. {STAGE_LINE[work.stage]}</p>
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Role">
-            {ROLES.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={role === id}
-                onClick={() => {
-                  setRole(id);
-                  if (id === "guardian" || id === "buyer" || id === "verra") void refreshHash();
-                }}
-                className={`min-h-11 shrink-0 px-3 text-sm ${role === id ? "bg-ink text-paper" : "border border-rule bg-sheet"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </header>
+        {role === "field" || role === "checker" || role === "developer" ? (
+          <p className="mb-2 text-sm text-quiet">
+            {RAIL.find(([id]) => id === work.stage)?.[1]}. {STAGE_LINE[work.stage]}
+          </p>
+        ) : null}
 
         {role === "field" ? (
           <FieldWalk locked={work.stage !== "open"} onSave={saveHouse} saved={visits.length} ready={counted.length} />
@@ -404,9 +397,7 @@ export function WorkDesk() {
             ))}
           </section>
         ) : null}
-        </>
-        ) : null}
-      </div>
+      </main>
     </div>
   );
 }

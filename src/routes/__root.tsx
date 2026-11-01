@@ -3,7 +3,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "VMR0015 Desk";
+const APP_NAME = "VMR0015";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#f4f0e6" },
       {
         name: "description",
-        content: "The VMR0015 Guardian policy for safe drinking water. Download the file, then follow the order inside it.",
+        content: "A guidebook and working desk for the VMR0015 safe drinking water policy. Download the file, record the houses, and see why a credit is not for sale yet.",
       },
     ],
     links: [
