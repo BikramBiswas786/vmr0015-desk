@@ -2,13 +2,12 @@ import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/
 import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
-import { criteriaPass } from "@/lib/desk/criteria";
+import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
 import { Criteria } from "@/components/desk/Criteria";
 import { Markets } from "@/components/desk/Markets";
 import { Guide } from "@/components/desk/Guide";
 import { PolicyHome } from "@/components/desk/PolicyHome";
 import { Paper } from "@/components/desk/Paper";
-import { SectionBrief } from "@/components/desk/SectionBrief";
 import { useState } from "react";
 
 const RATE = Number(POLICY.perHouse);
@@ -21,6 +20,7 @@ const NAV = [
   ["developer", "Describe"],
   ["guardian", "Guardian"],
   ["verra", "Verra"],
+  ["registry", "Registry"],
   ["issue", "Issue"],
   ["markets", "Markets"],
   ["buyer", "Offers"],
@@ -158,6 +158,44 @@ export function WorkDesk() {
 
   const result = policyIssue(locked.length);
 
+  async function loadDemo() {
+    const visit: Visit = {
+      id: "demo-balurghat",
+      house: "Balurghat, ward 3",
+      takenAt: new Date().toISOString(),
+      boil: "yes",
+      fuel: "wood",
+      water: "pass",
+      publicPipe: "no",
+      shape: "kiosk",
+      treatment: "chlorine",
+      sealed: "yes",
+      persons: 4,
+      stove: "none",
+      photo: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      status: "accepted",
+    };
+    const criteria = Object.fromEntries(CONDITIONS.map((condition) => [condition.id, condition.options[0]]));
+    const chain = await chainHash([visit]);
+    setVisits([visit]);
+    setWork({
+      ...work,
+      name: "Balurghat drum demo",
+      plant: "Balurghat treatment point",
+      starts: "2026-11-02",
+      setId: "A",
+      stage: "verified",
+      visitIds: [visit.id],
+      chain,
+      criteria,
+      validationNote: "Demo only. This is not a VVB opinion.",
+      monitoringNote: "Demo only. Four people, wood, chlorine drum, water passed.",
+      offers: [],
+    });
+    setLiveHash(chain);
+    setRole("field");
+  }
+
   const requestText = [
     `${work.name || "Untitled"} — VMR0015 project description. Not a Verra serial. Not a BEE certificate. Not for sale.`,
     work.plant ? `Treatment point: ${work.plant}.` : "No treatment point named.",
@@ -189,8 +227,7 @@ export function WorkDesk() {
         ))}
       </nav>
       <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-8">
-        {role !== "guide" ? <SectionBrief role={role} onGo={setRole} /> : null}
-        {role === "guide" ? <Guide onGo={(next) => setRole(next)} /> : null}
+        {role === "guide" ? <Guide onGo={(next) => setRole(next)} onDemo={() => void loadDemo()} /> : null}
         {role === "home" ? <PolicyHome onWork={() => setRole("field")} /> : null}
         {role === "field" || role === "checker" || role === "developer" || role === "issue" ? (
           <p className="mb-2 text-sm text-quiet">
@@ -199,13 +236,20 @@ export function WorkDesk() {
         ) : null}
 
         {role === "field" ? (
-          <FieldWalk locked={work.stage !== "open"} onSave={saveHouse} saved={visits.length} ready={counted.length} />
+          <>
+            {visits.map((visit) => (
+              <p key={visit.id} className="mb-2 border border-rule bg-sheet p-3 text-sm">
+                {visit.house}. {visit.persons} people. {visit.fuel}. {visit.shape === "kiosk" ? "Drum" : "House filter"}, {visit.treatment}. {visit.status}.
+              </p>
+            ))}
+            <FieldWalk locked={work.stage !== "open"} onSave={saveHouse} saved={visits.length} ready={counted.length} />
+          </>
         ) : null}
 
         {role === "developer" ? (
           <section className="mt-4 space-y-3 text-sm">
             <h2 className="font-serif text-3xl leading-tight">Project description</h2>
-            <p>Accepted houses become one description only after the seven applicability answers pass. A Not met answer voids the calculation in the policy file. You do not approve your own work.</p>
+            <p>This page locks a description. It does not calculate, and it does not send anything to Verra.</p>
             {work.stage === "open" ? (
               <>
                 <Criteria
@@ -316,9 +360,7 @@ export function WorkDesk() {
 
         {role === "guardian" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <p>
-              Guardian runs the policy after it is imported there. This file’s mint is the block tagged mint_by_report, and the token packed with the file is a draft named VCU VMR0015. Asking Guardian below only lists policies. It does not mint.
-            </p>
+            <p>This page only lists policies on a Guardian you already run. There is no saved login here. Paste your own address and token, or open MGS and import the file there. Asking does not calculate and does not mint.</p>
             <p className="border border-rule bg-sheet p-3 break-all">
               {work.chain ? work.chain : "No chain yet. The developer locks the houses first."}
               {work.chain && liveHash ? (chainState === "match" ? " Matches the houses." : chainState === "pending" ? " Checking." : " Does not match the houses now.") : ""}
@@ -348,28 +390,31 @@ export function WorkDesk() {
 
         {role === "verra" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <p>Registration and Issuance Process, version 5.0, 16 December 2025. The proponent prepares the request. Verra approves it and deposits the serials. Copy the packet, then submit it yourself on the Project Hub.</p>
+            <p>This page copies the request. It does not open the registry and it does not deposit a serial. Submit the copy yourself on the Project Hub.</p>
             <button type="button" onClick={() => copy("verra", requestText)} className="min-h-12 w-full bg-ink font-medium text-paper">{copied === "verra" ? "Copied" : "Copy the packet"}</button>
             <a href="https://verra.org/verra-project-hub/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">Verra Project Hub</a>
             <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">VMR0015 on Verra</a>
           </section>
         ) : null}
 
+        {role === "registry" ? (
+          <section className="mt-4 max-w-xl space-y-3 text-sm">
+            <h1 className="font-serif text-3xl leading-none">Registry</h1>
+            <p>The public Verra registry is where a registered project and a VCU serial can be looked up. This demo has no project ID and no serial. Viewing the registry does not need a login. Registering a project, or asking Verra to issue, does. That account is Verra’s, not a login stored in this app.</p>
+            <p className="border border-rule bg-sheet p-3">{work.name || "No project name yet"}. No Verra ID.</p>
+            <a href="https://registry.verra.org/verra" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">
+              Open the Verra registry
+            </a>
+          </section>
+        ) : null}
+
         {role === "issue" ? (
           <section className="mt-4 max-w-xl space-y-3 text-sm">
             <h1 className="font-serif text-3xl leading-none">Issue</h1>
-            <p>Verra deposits VCUs after it approves the verification. This desk cannot do that step.</p>
-            <ol className="space-y-2">
-              <li className="border border-rule bg-sheet p-3">1. Proponent. The project description is {work.stage === "open" ? "still open" : "locked"}.</li>
-              <li className="border border-rule bg-sheet p-3">2. VVB. Validation is {work.stage === "open" || work.stage === "described" ? "not given" : "recorded here as Validated"}.</li>
-              <li className="border border-rule bg-sheet p-3">3. Proponent. Submit the registration request on the Verra registry and pay the fee. This desk does not submit it.</li>
-              <li className="border border-rule bg-sheet p-3">4. Verra. Completeness check and review. Not started.</li>
-              <li className="border border-rule bg-sheet p-3">5. Verra. After verification approval, deposit the VCUs and generate the serials. Sample on this phone: {result.sum} t. Not a serial.</li>
-            </ol>
-            {work.stage === "issued" ? <p className="text-seal">A number written here earlier is not a VCU.</p> : null}
-            <button type="button" disabled={work.stage === "open" || work.stage === "described" || !criteriaPass(work.criteria)} onClick={() => copy("request", requestText)} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-              {copied === "request" ? "Copied" : "Copy the registration request"}
-            </button>
+            <p>This page does not issue. Deposit stays closed until Verra has approved a verification and deposited a serial on the registry.</p>
+            <p className="border border-rule bg-sheet p-3">
+              {work.stage === "verified" ? "A verification opinion is recorded here. It is not Verra’s approval." : STAGE_LINE[work.stage]} Sample on this phone: {result.sum} t. Not a serial.
+            </p>
             <button type="button" disabled className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">Deposit VCUs</button>
             <p className="text-quiet">Deposit stays closed. Only Verra generates the serials, after it has approved the verification.</p>
           </section>
