@@ -1,4 +1,5 @@
-import { compressPhoto, countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
+import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
+import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
 import { Paper } from "@/components/desk/Paper";
@@ -25,6 +26,14 @@ const APPS = [
   { href: "https://github.com/hashgraph/guardian", label: "Methodology library" },
 ];
 
+const RAIL = [
+  ["open", "Collect"],
+  ["described", "Describe"],
+  ["validated", "Check"],
+  ["monitoring", "Monitor"],
+  ["verified", "Verify"],
+] as const;
+
 function tonnesOf(count: number): string {
   return (count * RATE).toFixed(3);
 }
@@ -33,16 +42,6 @@ export function WorkDesk() {
   const { visits, setVisits } = useVisits();
   const { work, setWork } = useWork();
   const [role, setRole] = useState<Role>("field");
-  const [house, setHouse] = useState("");
-  const [boil, setBoil] = useState<Visit["boil"]>("yes");
-  const [fuel, setFuel] = useState<Visit["fuel"]>("wood");
-  const [water, setWater] = useState<Visit["water"]>("untested");
-  const [publicPipe, setPublicPipe] = useState<Visit["publicPipe"]>("unknown");
-  const [shape, setShape] = useState<Visit["shape"]>("unset");
-  const [treatment, setTreatment] = useState<Visit["treatment"]>("unknown");
-  const [sealed, setSealed] = useState<Visit["sealed"]>("no");
-  const [photo, setPhoto] = useState("");
-  const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   const [plant, setPlant] = useState("");
   const [starts, setStarts] = useState("");
@@ -63,37 +62,17 @@ export function WorkDesk() {
     work.chain === "" ? "none" : liveHash === "" ? "pending" : liveHash === work.chain ? "match" : "break";
   const sampleTonnes = tonnesOf(work.stage === "open" ? counted.length : locked.length);
 
-  async function onPhoto(file: File | undefined) {
-    if (!file) return;
-    setBusy(true);
-    try {
-      setPhoto(await compressPhoto(file));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function saveHouse() {
-    const label = house.trim();
-    if (!label || !photo || work.stage !== "open") return;
+  function saveHouse(draft: Pick<Visit, "house" | "boil" | "fuel" | "water" | "publicPipe" | "shape" | "treatment" | "sealed" | "photo">) {
+    const label = draft.house.trim();
+    if (!label || !draft.photo || work.stage !== "open") return;
     const next: Visit = {
+      ...draft,
       id: crypto.randomUUID(),
       house: label,
       takenAt: new Date().toISOString(),
-      boil,
-      fuel,
-      water,
-      publicPipe,
-      shape,
-      treatment,
-      sealed,
-      photo,
       status: "in",
     };
     setVisits((current) => [next, ...current].slice(0, 40));
-    setHouse("");
-    setPhoto("");
-    setWater("untested");
   }
 
   function mark(id: string, status: Visit["status"]) {
@@ -200,121 +179,44 @@ export function WorkDesk() {
   return (
     <div className="min-h-dvh bg-ink text-ink">
       <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-paper px-5 pt-6 pb-10">
-        <p className="text-xs font-medium tracking-widest text-seal uppercase">Six roles, one chain</p>
-        <h1 className="mt-2 font-serif text-3xl leading-none">VMR0015 Desk</h1>
-        <label className="mt-4 block text-sm">
-          You are
-          <select
-            value={role}
-            onChange={(event) => {
-              const next = event.target.value as Role;
-              setRole(next);
-              if (next === "guardian" || next === "buyer" || next === "verra") void refreshHash();
-            }}
-            className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2"
-          >
-            {ROLES.map(([id, label]) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
+        <header>
+          <div className="flex items-baseline justify-between gap-4">
+            <h1 className="font-serif text-3xl leading-none">Case file</h1>
+            <p className="text-xs tracking-widest text-quiet uppercase">VMR0015</p>
+          </div>
+          <ol className="mt-5 flex gap-1" aria-label="Case stage">
+            {RAIL.map(([id]) => (
+              <li key={id} className={`h-1 flex-1 ${work.stage === id || RAIL.findIndex(([stage]) => stage === work.stage) > RAIL.findIndex(([stage]) => stage === id) ? "bg-ink" : "bg-rule"}`} />
             ))}
-          </select>
-        </label>
-        <p className="mt-3 text-sm text-quiet">{STAGE_LINE[work.stage]}</p>
+          </ol>
+          <p className="mt-2 text-sm">{RAIL.find(([id]) => id === work.stage)?.[1]}. {STAGE_LINE[work.stage]}</p>
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Role">
+            {ROLES.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={role === id}
+                onClick={() => {
+                  setRole(id);
+                  if (id === "guardian" || id === "buyer" || id === "verra") void refreshHash();
+                }}
+                className={`min-h-11 shrink-0 px-3 text-sm ${role === id ? "bg-ink text-paper" : "border border-rule bg-sheet"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </header>
 
         {role === "field" ? (
-          <section className="mt-4 space-y-3">
-            <p className="text-sm leading-relaxed">
-              Visit a house that boils drinking water with wood. Photograph the drum or the filter. A public safe-water pipe already in the lane means this methodology does not apply. A drum counts only if the treatment point uses chlorine, a flocculant powder, or solar, and the drum is sealed or the water still carries disinfectant. This is a Verra note, not an Indian certificate.
-            </p>
-            {work.stage !== "open" ? (
-              <p className="border border-rule bg-sheet p-3 text-sm">The description is locked. New houses wait until the developer takes it back.</p>
-            ) : (
-              <>
-                <label className="block text-sm">
-                  House
-                  <input value={house} onChange={(event) => setHouse(event.target.value)} placeholder="Lane and house" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <label>
-                    Do they boil?
-                    <select value={boil} onChange={(event) => setBoil(event.target.value as Visit["boil"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                    </select>
-                  </label>
-                  <label>
-                    Fuel
-                    <select value={fuel} onChange={(event) => setFuel(event.target.value as Visit["fuel"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
-                      <option value="wood">Wood</option>
-                      <option value="charcoal">Charcoal</option>
-                      <option value="gas">Gas</option>
-                      <option value="none">None</option>
-                    </select>
-                  </label>
-                </div>
-                <label className="block text-sm">
-                  Public safe-water pipe already here?
-                  <select value={publicPipe} onChange={(event) => setPublicPipe(event.target.value as Visit["publicPipe"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
-                    <option value="unknown">Not answered</option>
-                    <option value="no">No</option>
-                    <option value="yes">Yes, so this house cannot count</option>
-                  </select>
-                </label>
-                <label className="block text-sm">
-                  How the safe water arrives
-                  <select value={shape} onChange={(event) => setShape(event.target.value as Visit["shape"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
-                    <option value="unset">Choose</option>
-                    <option value="kiosk">Drum from a treatment point</option>
-                    <option value="house">Filter in the house</option>
-                  </select>
-                </label>
-                <label className="block text-sm">
-                  Treatment
-                  <select value={treatment} onChange={(event) => setTreatment(event.target.value as Visit["treatment"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
-                    <option value="unknown">Choose</option>
-                    <option value="chlorine">Chlorine</option>
-                    <option value="flocculant">Flocculant and disinfectant powder</option>
-                    <option value="solar">Solar disinfection</option>
-                    <option value="membrane">Membrane filter, house only</option>
-                    <option value="ceramic">Ceramic filter, house only</option>
-                    <option value="other">Something else, cannot count</option>
-                  </select>
-                </label>
-                {shape === "kiosk" ? (
-                  <label className="block text-sm">
-                    Drum sealed, or disinfectant still in the water?
-                    <select value={sealed} onChange={(event) => setSealed(event.target.value as Visit["sealed"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
-                      <option value="no">No</option>
-                      <option value="yes">Yes</option>
-                    </select>
-                  </label>
-                ) : null}
-                <label className="block text-sm">
-                  Water test
-                  <select value={water} onChange={(event) => setWater(event.target.value as Visit["water"])} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
-                    <option value="untested">Not tested yet</option>
-                    <option value="pass">Passed, safe</option>
-                    <option value="fail">Failed</option>
-                  </select>
-                </label>
-                <label className="flex min-h-12 cursor-pointer items-center justify-center border border-rule bg-sheet text-sm font-medium">
-                  {busy ? "Reading photo…" : photo ? "Photo ready. Tap to replace." : "Take a photo of the system"}
-                  <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => onPhoto(event.target.files?.[0])} />
-                </label>
-                {photo ? <img src={photo} alt="System at the house" className="max-h-48 w-full border border-rule object-cover" /> : null}
-                <button type="button" disabled={!house.trim() || !photo || busy} onClick={saveHouse} className="min-h-12 w-full bg-ink text-sm font-medium text-paper disabled:opacity-40">
-                  Save this house
-                </button>
-              </>
-            )}
-            <p className="text-sm text-quiet">{visits.length} houses on this phone. {counted.length} could enter a sample, at {POLICY.perHouse} t each, if a checker accepts them.</p>
-          </section>
+          <FieldWalk locked={work.stage !== "open"} onSave={saveHouse} saved={visits.length} ready={counted.length} />
         ) : null}
 
         {role === "developer" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <p>You bundle the accepted houses into one project description. You do not approve your own work.</p>
+            <h2 className="font-serif text-3xl leading-tight">Project description</h2>
+            <p>Accepted houses become one description. You do not approve your own work. India’s offset list has no drinking-water methodology, so this is not a Carbon Credit Certificate.</p>
             {work.stage === "open" ? (
               <>
                 <label className="block">
@@ -339,7 +241,7 @@ export function WorkDesk() {
                 <button type="button" disabled={!name.trim() || !plant.trim() || counted.length === 0} onClick={lockDescription} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
                   Lock {counted.length} houses
                 </button>
-                <p className="text-quiet">This description is for VMR0015. India’s offset list has no drinking-water methodology, so it is not a Carbon Credit Certificate.</p>
+                <p className="text-quiet">This description is for VMR0015. It is not a serial, and it is not for sale.</p>
                 {counted.length === 0 ? <p className="text-quiet">Nothing to lock. A house needs no public safe-water pipe, boiling with wood or charcoal, a passed test, a photo, and an allowed treatment. A drum also needs a seal. The checker must accept it.</p> : null}
               </>
             ) : (
@@ -370,7 +272,7 @@ export function WorkDesk() {
           <section className="mt-4 space-y-3 text-sm">
             {work.stage === "open" ? (
               <>
-                <p>Accept a house only when the water test passed. A photo by itself is not enough.</p>
+                <p>Accept a house only when every rule passes. A photo by itself is not enough.</p>
                 {visits.length === 0 ? <p className="text-quiet">No house yet.</p> : null}
                 {visits.map((visit) => {
                   const gap = ruleGap(visit);
