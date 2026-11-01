@@ -1,14 +1,15 @@
 import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
 import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
-import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
+import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
 import { Criteria } from "@/components/desk/Criteria";
 import { Markets } from "@/components/desk/Markets";
 import { Guide } from "@/components/desk/Guide";
 import { PolicyHome } from "@/components/desk/PolicyHome";
 import { Paper } from "@/components/desk/Paper";
-import { useState } from "react";
+import { Path, place } from "@/components/desk/Path";
+import { useEffect, useState } from "react";
 
 const RATE = Number(POLICY.perHouse);
 
@@ -35,15 +36,6 @@ const APPS = [
   { href: "https://dev.guardian.hedera.com/api-reference-guardian", label: "Guardian API" },
   { href: "https://github.com/hashgraph/guardian", label: "Methodology library" },
 ];
-
-const RAIL = [
-  ["open", "Collect"],
-  ["described", "Describe"],
-  ["validated", "Check"],
-  ["monitoring", "Monitor"],
-  ["verified", "Verify"],
-  ["issued", "Issue"],
-] as const;
 
 function tonnesOf(count: number): string {
   return (count * RATE).toFixed(3);
@@ -72,6 +64,14 @@ export function WorkDesk() {
   const chainState =
     work.chain === "" ? "none" : liveHash === "" ? "pending" : liveHash === work.chain ? "match" : "break";
   const sampleTonnes = tonnesOf(work.stage === "open" ? counted.length : locked.length);
+  const waiting = visits.filter((visit) => visit.status !== "accepted").length;
+
+  useEffect(() => {
+    if (!work.chain) return;
+    const rows = visits.filter((visit) => work.visitIds.includes(visit.id));
+    if (rows.length === 0) return;
+    void chainHash(rows).then(setLiveHash);
+  }, [work.chain, work.visitIds, visits]);
 
   function saveHouse(draft: Pick<Visit, "house" | "boil" | "fuel" | "water" | "publicPipe" | "shape" | "treatment" | "sealed" | "persons" | "stove" | "photo">) {
     const label = draft.house.trim();
@@ -187,30 +187,53 @@ export function WorkDesk() {
       plant: "Balurghat treatment point",
       starts: "2026-11-02",
       setId: "A",
-      stage: "verified",
+      stage: "described",
       visitIds: [visit.id],
       chain,
       criteria,
-      validationNote: "Demo only. This is not a VVB opinion.",
-      monitoringNote: "Demo only. Four people, wood, chlorine drum, water passed.",
-      serial: "DEMO-NOT-A-VERRA-SERIAL",
-      offers: [
-        {
-          institution: "Demo buyer",
-          tonnes: "0.519",
-          contact: "Recorded on this phone. Not sent to the registry.",
-          at: new Date().toISOString(),
-        },
-      ],
+      validationNote: "",
+      monitoringNote: "",
+      serial: "",
+      issuedSum: "",
+      issuedWhole: 0,
+      issuedAt: "",
+      offers: [],
     });
     setLiveHash(chain);
-    setRole("buyer");
+    setRole("guide");
+  }
+
+  async function issueCredit() {
+    if (locked.length === 0) return;
+    const now = await chainHash(locked);
+    if (work.chain && now !== work.chain) return;
+    const issued = policyIssue(locked.length);
+    setLiveHash(now);
+    setWork({
+      ...work,
+      stage: "issued",
+      issuedSum: issued.sum,
+      issuedWhole: Number(issued.sum),
+      issuedAt: new Date().toISOString(),
+    });
+  }
+
+  function goNext() {
+    const at = place(work.stage, counted.length, waiting);
+    if (at === 0) setRole("field");
+    else if (at === 1) setRole("checker");
+    else if (at === 2) setRole("developer");
+    else if (at === 3) advance("validated", { validationNote: "Validated" });
+    else if (at === 4) advance("monitoring", { monitoringNote: note.trim() });
+    else if (at === 5) advance("verified");
+    else if (at === 6) void issueCredit();
+    else setRole("buyer");
   }
 
   function recordBuyer() {
     const who = buyerName.trim();
     const tonnes = Number(buyerTonnes);
-    if (!work.serial.trim() || !who || !buyerContact.trim() || !Number.isFinite(tonnes) || tonnes <= 0) return;
+    if (!who || !buyerContact.trim() || !Number.isFinite(tonnes) || tonnes <= 0) return;
     setWork({
       ...work,
       offers: [{ institution: who, tonnes: tonnes.toFixed(3), contact: buyerContact.trim(), at: new Date().toISOString() }, ...work.offers].slice(0, 20),
@@ -221,7 +244,7 @@ export function WorkDesk() {
   }
 
   const requestText = [
-    `${work.name || "Untitled"} — VMR0015 project description. Not a Verra serial. Not a BEE certificate. Not for sale.`,
+    `${work.name || "Untitled"}. ${work.plant || "No treatment point"}.`,
     work.plant ? `Treatment point: ${work.plant}.` : "No treatment point named.",
     `Applicability: ${criteriaPass(work.criteria) ? "the seven answers pass" : "the seven answers are missing or void the calculation"}.`,
     `Template ${work.setId}. Houses in the lock: ${work.visitIds.length}. Sample ${sampleTonnes} t at ${POLICY.perHouse} t each.`,
@@ -251,13 +274,9 @@ export function WorkDesk() {
         ))}
       </nav>
       <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-8">
+        <Path stage={work.stage} accepted={counted.length} waiting={waiting} sum={work.stage === "issued" ? work.issuedSum : result.sum} note={note} onNote={setNote} onNext={goNext} />
         {role === "guide" ? <Guide onGo={(next) => setRole(next)} onDemo={() => void loadDemo()} /> : null}
         {role === "home" ? <PolicyHome onWork={() => setRole("field")} /> : null}
-        {role === "field" || role === "checker" || role === "developer" || role === "issue" ? (
-          <p className="mb-2 text-sm text-quiet">
-            {RAIL.find(([id]) => id === work.stage)?.[1]}. {STAGE_LINE[work.stage]}
-          </p>
-        ) : null}
 
         {role === "field" ? (
           <>
@@ -273,7 +292,7 @@ export function WorkDesk() {
         {role === "developer" ? (
           <section className="mt-4 space-y-3 text-sm">
             <h2 className="font-serif text-3xl leading-tight">Project description</h2>
-            <p>This page locks a description. It does not calculate, and it does not send anything to Verra.</p>
+            <p>Name the project, then use the button on the chart for the next step.</p>
             {work.stage === "open" ? (
               <>
                 <Criteria
@@ -310,7 +329,7 @@ export function WorkDesk() {
               </>
             ) : (
               <>
-                <p className="border border-rule bg-sheet p-3">{work.name}. {work.plant}. Template {work.setId}. {work.visitIds.length} houses. Sample {sampleTonnes} t. Not issued. Not for sale.</p>
+                <p className="border border-rule bg-sheet p-3">{work.name}. {work.plant}. Template {work.setId}. {work.visitIds.length} houses. {sampleTonnes} t. {work.stage === "issued" ? `Issued ${work.issuedSum} t.` : "Use the button on the chart."}</p>
                 {work.stage === "validated" ? (
                   <>
                     <label className="block">
@@ -371,14 +390,14 @@ export function WorkDesk() {
             ) : null}
             {work.stage === "monitoring" ? (
               <>
-                <p>This is the VVB’s verification opinion. A positive opinion is not Verra’s approval, and it does not deposit VCUs.</p>
+                <p>Read the monitoring note, then press Verify on the chart.</p>
                 <p className="border border-rule bg-sheet p-3">{work.monitoringNote}</p>
                 <button type="button" onClick={() => advance("verified")} className="min-h-12 w-full bg-ink font-medium text-paper">Positive verification opinion</button>
                 <button type="button" onClick={() => advance("validated")} className="min-h-12 w-full border border-rule bg-sheet">Send the note back</button>
               </>
             ) : null}
             {work.stage === "validated" ? <p className="text-quiet">Waiting on the developer’s monitoring note.</p> : null}
-            {work.stage === "verified" || work.stage === "issued" ? <p className="text-quiet">The VVB opinion is in. Open Issue for the request Verra still has to approve.</p> : null}
+            {work.stage === "verified" || work.stage === "issued" ? <p className="text-quiet">Verified. The next button issues the tonnes.</p> : null}
           </section>
         ) : null}
 
@@ -438,15 +457,11 @@ export function WorkDesk() {
         {role === "issue" ? (
           <section className="mt-4 max-w-xl space-y-3 text-sm">
             <h1 className="font-serif text-3xl leading-none">Issue</h1>
-            <p>This page does not issue. Deposit stays closed until Verra has approved a verification and deposited a serial on the registry.</p>
-            <p className="border border-rule bg-sheet p-3">
-              {work.stage === "verified" ? "A verification opinion is recorded here. It is not Verra’s approval." : STAGE_LINE[work.stage]} Sample on this phone: {result.sum} t. Not a serial.
-            </p>
-            <button type="button" disabled className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">Deposit VCUs</button>
-            <button type="button" onClick={() => setRole("buyer")} className="min-h-12 w-full border border-rule bg-sheet">
-              The desk ends at Offers
-            </button>
-            <p className="text-quiet">Deposit stays closed. Only Verra generates the serials, after it has approved the verification.</p>
+            {work.stage === "issued" ? (
+              <p className="border border-rule bg-sheet p-3">{work.name}. Issued {work.issuedSum} t on {work.issuedAt.slice(0, 10)}. {locked.length} houses, {POLICY.perHouse} t each.</p>
+            ) : (
+              <p>{locked.length} houses. {result.sum} t. Press the button on the chart when the step says Issue.</p>
+            )}
           </section>
         ) : null}
 
@@ -456,38 +471,25 @@ export function WorkDesk() {
 
         {role === "buyer" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <p>Offers records a buyer against a serial you copied from the Verra registry. It does not transfer the credit. The transfer is done in that registry account, by the account holder.</p>
+            <p>{work.name || "This project"}. {work.issuedSum || result.sum} t. Write who is taking them.</p>
             <label className="block">
-              Serial from the registry
-              <input value={work.serial} onChange={(event) => setWork({ ...work, serial: event.target.value })} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+              Buyer
+              <input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
             </label>
-            {work.serial.trim() ? (
-              <>
-                <label className="block">
-                  Buyer
-                  <input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <label className="block">
-                  Tonnes
-                  <input value={buyerTonnes} onChange={(event) => setBuyerTonnes(event.target.value)} inputMode="decimal" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <label className="block">
-                  Contact
-                  <input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <button type="button" onClick={recordBuyer} className="min-h-12 w-full bg-ink font-medium text-paper">
-                  Record the buyer
-                </button>
-              </>
-            ) : (
-              <button type="button" onClick={() => setRole("registry")} className="min-h-12 w-full border border-rule bg-sheet">
-                Open the registry and copy a serial first
-              </button>
-            )}
-            {work.serial.startsWith("DEMO") ? <p className="text-quiet">Demo finished. The house, the check, the lock, and this buyer note are on this phone. Verra was not contacted.</p> : null}
+            <label className="block">
+              Tonnes
+              <input value={buyerTonnes} onChange={(event) => setBuyerTonnes(event.target.value)} inputMode="decimal" placeholder={work.issuedSum || result.sum} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <label className="block">
+              Contact
+              <input value={buyerContact} onChange={(event) => setBuyerContact(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <button type="button" onClick={recordBuyer} className="min-h-12 w-full bg-ink font-medium text-paper">
+              Record the buyer
+            </button>
             {work.offers.map((offer) => (
               <p key={`${offer.at}-${offer.institution}`} className="border border-rule bg-sheet p-3">
-                {offer.institution}. {offer.tonnes} t against {work.serial || "no serial"}. {offer.at.slice(0, 10)}. {offer.contact}
+                {offer.institution}. {offer.tonnes} t. {offer.at.slice(0, 10)}. {offer.contact}
               </p>
             ))}
           </section>

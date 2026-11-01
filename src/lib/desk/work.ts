@@ -123,10 +123,10 @@ export async function chainHash(visits: Visit[]): Promise<string> {
 }
 
 export const STAGE_LINE: Record<Stage, string> = {
-  open: "Houses are still being collected.",
-  described: "The developer has locked a project description.",
-  validated: "The checker has validated that description.",
-  monitoring: "A monitoring note is in, waiting on the checker.",
-  verified: "The VVB has given a positive verification opinion. Verra has not approved it and has not deposited VCUs.",
-  issued: "A number was written in this desk. It is not a VCU serial.",
+  open: "Record the house, then accept it.",
+  described: "Next: validate.",
+  validated: "Next: write the monitoring note.",
+  monitoring: "Next: verify.",
+  verified: "Next: issue the tonnes.",
+  issued: "Next: record the buyer.",
 };

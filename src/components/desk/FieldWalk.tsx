@@ -70,7 +70,7 @@ export function FieldWalk({
   }
 
   if (locked) {
-    return <p className="border border-rule bg-sheet p-4 text-sm">This description is locked. New houses wait until it is taken back.</p>;
+    return <p className="border border-rule bg-sheet p-4 text-sm">This house is already in the description. The next step is the button above.</p>;
   }
 
   return (
