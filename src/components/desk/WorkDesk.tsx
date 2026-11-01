@@ -4,13 +4,11 @@ import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
 import { Criteria } from "@/components/desk/Criteria";
-import { Ask } from "@/components/desk/Ask";
 import { useEffect, useState } from "react";
 
 const RATE = Number(POLICY.perHouse);
 
-const NAV = [
-  ["who", "Who"],
+const JOBS = [
   ["drum", "Drum boy"],
   ["check", "Checker"],
   ["developer", "Developer"],
@@ -18,7 +16,42 @@ const NAV = [
   ["guardian", "Guardian"],
 ] as const;
 
-type Role = (typeof NAV)[number][0];
+type Role = "who" | (typeof JOBS)[number][0];
+
+const SIDE: Record<Exclude<Role, "who">, [string, string, string][]> = {
+  drum: [
+    ["house", "House name", "Write the lane and the door. Then press Continue."],
+    ["people", "How many people", "Count everyone who lives in that house."],
+    ["pipe", "Public pipe", "If a safe pipe already reaches this house, it cannot count."],
+    ["boil", "Do they boil", "They must boil their drinking water."],
+    ["fuel", "Wood or charcoal", "Wood and charcoal can count. Gas cannot."],
+    ["stove", "The stove", "If a better stove does all the boiling, this house cannot use the flat rate."],
+    ["shape", "Drum or filter", "A drum comes from a plant. A filter sits inside the house."],
+    ["treat", "What treats it", "A drum uses chlorine, a powder, or the sun."],
+    ["seal", "Is the drum closed", "The drum is sealed, or disinfectant is still in the water."],
+    ["test", "Water test", "Only a test that passed can count."],
+    ["photo", "Take the photo", "Photograph the drum or the filter."],
+    ["review", "Save the house", "Save it. A different person, the checker, accepts it later."],
+  ],
+  check: [
+    ["houses", "Look at the photo", "Accept the house only when every answer is allowed. If something is wrong, send it back."],
+    ["opinion", "The written project", "When the developer has locked the houses, you say yes, or you send the writing back."],
+    ["verify", "The later note", "Read what the developer wrote after another visit. If it is right, say so."],
+  ],
+  developer: [
+    ["questions", "Seven questions", "Answer each one. All seven must be yes before the project can be named."],
+    ["name", "Name the project", "Write the project name and the plant the drums leave from. Then lock the houses the checker accepted."],
+    ["note", "The later visit", "After the checker says yes, write what you saw when the houses were visited again."],
+  ],
+  business: [
+    ["tonnes", "The tonnes", "One house that passed is 0.519 tonnes. You can issue them only after the checker has agreed the later note."],
+    ["buyer", "Who is buying", "Write the buyer's name, how many tonnes, and how to reach them."],
+  ],
+  guardian: [
+    ["file", "Download the file", "A is for a project that starts before 1 January 2027. B is for a project that starts on or after that day."],
+    ["import", "Import it in Guardian", "Open Guardian and import the file there. This page cannot import it for you."],
+  ],
+};
 
 const APPS = [
   { href: GUARDIAN_URL, label: "Managed Guardian Service, where a policy is imported" },
@@ -35,6 +68,7 @@ export function WorkDesk() {
   const { visits, setVisits } = useVisits();
   const { work, setWork } = useWork();
   const [role, setRole] = useState<Role>("who");
+  const [pane, setPane] = useState("house");
   const [name, setName] = useState("");
   const [plant, setPlant] = useState("");
   const [starts, setStarts] = useState("");
@@ -63,6 +97,12 @@ export function WorkDesk() {
     if (rows.length === 0) return;
     void chainHash(rows).then(setLiveHash);
   }, [work.chain, work.visitIds, visits]);
+
+  function choose(next: Role) {
+    setRole(next);
+    const first = next === "who" ? "" : SIDE[next][0][0];
+    if (first) setPane(first);
+  }
 
   function saveHouse(draft: Pick<Visit, "house" | "boil" | "fuel" | "water" | "publicPipe" | "shape" | "treatment" | "sealed" | "persons" | "stove" | "photo">) {
     const label = draft.house.trim();
@@ -198,6 +238,7 @@ export function WorkDesk() {
     });
     setLiveHash(chain);
     setRole("drum");
+    setPane("house");
   }
 
   async function issueCredit() {
@@ -241,31 +282,36 @@ export function WorkDesk() {
 
   return (
     <div className="flex min-h-dvh bg-paper text-ink">
-      <nav aria-label="Sections" className="sticky top-0 flex h-dvh w-28 shrink-0 flex-col gap-1 overflow-y-auto border-r border-rule bg-sheet px-2 py-4 sm:w-44">
+      <nav aria-label="This job" className="sticky top-0 flex h-dvh w-36 shrink-0 flex-col gap-1 overflow-y-auto border-r border-rule bg-sheet px-2 py-4 sm:w-56">
         <p className="px-2 pb-3 font-serif text-xl leading-tight">VMR0015</p>
-        {NAV.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            aria-current={role === id ? "page" : undefined}
-            onClick={() => {
-              setRole(id);
-              if (id === "guardian") void refreshHash();
-            }}
-            className={`min-h-11 px-2 text-left text-sm ${role === id ? "bg-ink text-paper" : ""}`}
-          >
-            {label}
+        {role === "who" ? <p className="px-2 text-sm leading-relaxed">Pick one job. The steps for that job appear here.</p> : null}
+        {role !== "who"
+          ? SIDE[role].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={pane === id ? "page" : undefined}
+                onClick={() => setPane(id)}
+                className={`min-h-11 px-2 text-left text-sm ${pane === id ? "bg-ink text-paper" : ""}`}
+              >
+                {label}
+              </button>
+            ))
+          : null}
+        {role !== "who" ? (
+          <button type="button" onClick={() => choose("who")} className="mt-auto min-h-11 px-2 text-left text-sm text-quiet">
+            Change job
           </button>
-        ))}
+        ) : null}
       </nav>
       <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-8">
         {role === "who" ? (
           <section className="max-w-xl">
-            <h1 className="font-serif text-4xl leading-none">Who is signing in</h1>
-            <p className="mt-4 text-sm leading-relaxed">Pick a job. The next person picks their own. A finished description does not close the photo, the check, or the next project.</p>
+            <h1 className="font-serif text-4xl leading-none">Who are you</h1>
+            <p className="mt-4 text-sm leading-relaxed">Pick your job. After that, the left side shows only your steps, in plain words. Another person can press Change job and pick theirs.</p>
             <div className="mt-6 grid gap-3">
-              {NAV.filter(([id]) => id !== "who").map(([id, label]) => (
-                <button key={id} type="button" onClick={() => setRole(id)} className="min-h-14 border border-rule bg-sheet px-4 text-left font-serif text-2xl">
+              {JOBS.map(([id, label]) => (
+                <button key={id} type="button" onClick={() => choose(id)} className="min-h-14 border border-rule bg-sheet px-4 text-left font-serif text-2xl">
                   {label}
                 </button>
               ))}
@@ -275,70 +321,68 @@ export function WorkDesk() {
 
         {role === "drum" ? (
           <>
-            <Ask who="drum" />
-            {visits.map((visit) => (
-              <p key={visit.id} className="mb-2 border border-rule bg-sheet p-3 text-sm">
-                {visit.house}. {visit.persons} people. {visit.fuel}. {visit.shape === "kiosk" ? "Drum" : "House filter"}, {visit.treatment}. {visit.status}.
-              </p>
-            ))}
-            <p className="mb-3 text-sm">A new photo stays out of {work.name || "the open description"}. It waits for the next one.</p>
-            <FieldWalk onSave={saveHouse} saved={visits.length} ready={counted.length} />
+            <p className="max-w-xl text-sm leading-relaxed">{SIDE.drum.find(([id]) => id === pane)?.[2]}</p>
+            <FieldWalk onSave={saveHouse} saved={visits.length} ready={counted.length} step={pane} onStep={setPane} />
           </>
         ) : null}
 
-        {role === "developer" && work.stage !== "validated" ? (
-          <section className="mt-4 space-y-3 text-sm">
-            <Ask who="developer" />
-            {work.name && work.stage !== "open" ? <p>{work.name}. {work.plant}. {work.visitIds.length} houses already in this description.</p> : null}
-                <Criteria
-                  answers={work.criteria}
-                  onAnswer={(id, value) => setWork({ ...work, criteria: { ...work.criteria, [id]: value } })}
-                />
-                {criteriaPass(work.criteria) ? (
-                  <>
-                <label className="block">
-                  Project name
-                  <input value={name} onChange={(event) => setName(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <label className="block">
-                  Treatment point
-                  <input value={plant} onChange={(event) => setPlant(event.target.value)} placeholder="The small plant the drums leave from" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <label className="block">
-                  Start date
-                  <input type="date" value={starts} onChange={(event) => setStarts(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-                </label>
-                <label className="block">
-                  Policy file
-                  <select value={setId} onChange={(event) => setSetId(event.target.value as "A" | "B")} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
-                    <option value="A">v3.1 A, before 1 January 2027</option>
-                    <option value="B">v3.1 B, on or after 1 January 2027</option>
-                  </select>
-                </label>
-                <button type="button" disabled={!name.trim() || !plant.trim() || free.length === 0} onClick={lockDescription} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-                  {work.stage === "open" ? `Lock ${free.length} houses` : `New description, ${free.length} houses`}
-                </button>
-                {free.length === 0 ? <p className="text-quiet">No new accepted house. The drum boy takes a photo, then the checker accepts it.</p> : null}
-                  </>
-                ) : null}
+        {role === "developer" && pane === "questions" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.developer[0][2]}</p>
+            <Criteria
+              answers={work.criteria}
+              onAnswer={(id, value) => setWork({ ...work, criteria: { ...work.criteria, [id]: value } })}
+            />
+            {criteriaPass(work.criteria) ? <button type="button" onClick={() => setPane("name")} className="min-h-12 w-full bg-ink font-medium text-paper">All seven passed. Name the project.</button> : <p className="text-quiet">Not ready to name the project yet.</p>}
           </section>
         ) : null}
-        {role === "developer" && work.stage === "validated" ? (
-          <section className="mt-4 space-y-3 text-sm">
-            <h2 className="font-serif text-3xl leading-tight">Monitoring</h2>
+        {role === "developer" && pane === "name" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.developer[1][2]}</p>
+            {work.name && work.stage !== "open" ? <p>{work.name}. {work.plant}. {work.visitIds.length} houses are already in a description. A new lock uses only houses that are not in one yet.</p> : null}
             <label className="block">
-              Monitoring note
+              Project name
+              <input value={name} onChange={(event) => setName(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <label className="block">
+              Treatment point
+              <input value={plant} onChange={(event) => setPlant(event.target.value)} placeholder="The small plant the drums leave from" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <label className="block">
+              Start date
+              <input type="date" value={starts} onChange={(event) => setStarts(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <label className="block">
+              Policy file
+              <select value={setId} onChange={(event) => setSetId(event.target.value as "A" | "B")} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
+                <option value="A">v3.1 A, before 1 January 2027</option>
+                <option value="B">v3.1 B, on or after 1 January 2027</option>
+              </select>
+            </label>
+            <button type="button" disabled={!criteriaPass(work.criteria) || !name.trim() || !plant.trim() || free.length === 0} onClick={lockDescription} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+              {work.stage === "open" ? `Lock ${free.length} houses` : `New description, ${free.length} houses`}
+            </button>
+            {!criteriaPass(work.criteria) ? <p className="text-quiet">Go back to Seven questions. They are not all yes yet.</p> : null}
+            {free.length === 0 ? <p className="text-quiet">No new accepted house. The drum boy takes a photo. The checker accepts it.</p> : null}
+          </section>
+        ) : null}
+        {role === "developer" && pane === "note" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.developer[2][2]}</p>
+            <label className="block">
+              What you saw
               <textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-24 w-full border border-rule bg-sheet px-3 py-2" />
             </label>
-            <button type="button" disabled={!note.trim()} onClick={() => advance("monitoring", { monitoringNote: note.trim() })} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+            <button type="button" disabled={work.stage !== "validated" || !note.trim()} onClick={() => advance("monitoring", { monitoringNote: note.trim() })} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
               Save the note
             </button>
+            {work.stage !== "validated" ? <p className="text-quiet">The checker has not said yes to the description yet. You can write the note now. Saving waits for that yes.</p> : null}
           </section>
         ) : null}
 
-        {role === "check" ? (
-          <section className="mt-4 space-y-3 text-sm">
-            <Ask who="check" />
+        {role === "check" && pane === "houses" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.check[0][2]}</p>
             {visits.length === 0 ? <p className="text-quiet">No house yet. The drum boy takes the photo.</p> : null}
             {visits.map((visit) => {
               const gap = ruleGap(visit);
@@ -359,50 +403,46 @@ export function WorkDesk() {
                 </article>
               );
             })}
-            {work.stage === "described" ? (
-              <>
-                <p>{work.name}. {locked.length} houses. {sampleTonnes} t.</p>
-                <label className="block">
-                  Validation note
-                  <textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-24 w-full border border-rule bg-sheet px-3 py-2" />
-                </label>
-                <button type="button" disabled={locked.length === 0 || !criteriaPass(work.criteria)} onClick={() => advance("validated", { validationNote: note.trim() || "Validated" })} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-                  Opinion: Validated
-                </button>
-                <button type="button" onClick={takeBack} className="min-h-12 w-full border border-rule bg-sheet">Opinion: not validated. Send it back</button>
-              </>
-            ) : null}
-            {work.stage === "monitoring" ? (
-              <>
-                <p>{work.monitoringNote}</p>
-                <p className="border border-rule bg-sheet p-3">{work.monitoringNote}</p>
-                <button type="button" onClick={() => advance("verified")} className="min-h-12 w-full bg-ink font-medium text-paper">Positive verification opinion</button>
-                <button type="button" onClick={() => advance("validated")} className="min-h-12 w-full border border-rule bg-sheet">Send the note back</button>
-              </>
-            ) : null}
-            {work.stage === "validated" ? <p className="text-quiet">Waiting on the developer’s monitoring note.</p> : null}
-            {work.stage === "verified" || work.stage === "issued" ? <p className="text-quiet">Verified. Open Issue.</p> : null}
+          </section>
+        ) : null}
+        {role === "check" && pane === "opinion" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.check[1][2]}</p>
+            <p>{work.name || "No description yet"}. {locked.length} houses. {sampleTonnes} t.</p>
+            <label className="block">
+              Your note
+              <textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-1 min-h-24 w-full border border-rule bg-sheet px-3 py-2" />
+            </label>
+            <button type="button" disabled={work.stage !== "described" || locked.length === 0 || !criteriaPass(work.criteria)} onClick={() => advance("validated", { validationNote: note.trim() || "Validated" })} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+              Yes. The description is right.
+            </button>
+            <button type="button" disabled={work.stage !== "described"} onClick={takeBack} className="min-h-12 w-full border border-rule bg-sheet disabled:opacity-40">Send the description back</button>
+            {work.stage !== "described" ? <p className="text-quiet">There is no locked description waiting. The developer locks the houses first.</p> : null}
+          </section>
+        ) : null}
+        {role === "check" && pane === "verify" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.check[2][2]}</p>
+            <p className="border border-rule bg-sheet p-3">{work.monitoringNote || "The developer has not saved a later note yet."}</p>
+            <button type="button" disabled={work.stage !== "monitoring"} onClick={() => advance("verified")} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">The note is right</button>
+            <button type="button" disabled={work.stage !== "monitoring"} onClick={() => advance("validated")} className="min-h-12 w-full border border-rule bg-sheet disabled:opacity-40">Send the note back</button>
           </section>
         ) : null}
 
-        {role === "guardian" ? (
-          <section className="mt-4 space-y-3 text-sm">
-            <Ask who="guardian" />
-            <p>This page only lists policies on a Guardian you already run. There is no saved login here. Paste your own address and token, or open MGS and import the file there. Asking does not calculate and does not mint.</p>
-            <p className="border border-rule bg-sheet p-3 break-all">
-              {work.chain ? work.chain : "No chain yet. The developer locks the houses first."}
-              {work.chain && liveHash ? (chainState === "match" ? " Matches the houses." : chainState === "pending" ? " Checking." : " Does not match the houses now.") : ""}
-            </p>
-            <label className="block">
-              Guardian address
-              <input value={guardianUrl} onChange={(event) => setGuardianUrl(event.target.value)} placeholder="https://…" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-            </label>
-            <label className="block">
-              Bearer token
-              <input value={token} onChange={(event) => setToken(event.target.value)} type="password" autoComplete="off" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
-            </label>
-            <button type="button" onClick={askGuardian} className="min-h-12 w-full bg-ink font-medium text-paper">Ask Guardian what policies it has</button>
-            {guardianNote ? <p className="text-quiet">{guardianNote}</p> : null}
+        {role === "guardian" && pane === "file" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.guardian[0][2]}</p>
+            <a href={FILES.find((file) => file.version === "v3.1" && file.id === "A")?.href ?? FILES[0].href} download className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">
+              Download file A
+            </a>
+            <a href={FILES.find((file) => file.version === "v3.1" && file.id === "B")?.href ?? FILES[0].href} download className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
+              Download file B
+            </a>
+          </section>
+        ) : null}
+        {role === "guardian" && pane === "import" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.guardian[1][2]}</p>
             <ul className="space-y-2">
               {APPS.map((app) => (
                 <li key={app.href}>
@@ -410,16 +450,23 @@ export function WorkDesk() {
                 </li>
               ))}
             </ul>
-            <a href={FILES.find((file) => file.version === "v3.1" && file.id === (work.setId || "A"))?.href ?? FILES[0].href} download className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
-              Download policy v3.1 {work.setId || "A"}
-            </a>
+            <p className="border border-rule bg-sheet p-3 break-all">{work.chain || "No house list is locked yet. The developer does that first."}</p>
+            <label className="block">
+              Your Guardian address, if you already run one
+              <input value={guardianUrl} onChange={(event) => setGuardianUrl(event.target.value)} placeholder="https://…" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <label className="block">
+              Your token
+              <input value={token} onChange={(event) => setToken(event.target.value)} type="password" autoComplete="off" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <button type="button" onClick={askGuardian} className="min-h-12 w-full bg-ink font-medium text-paper">Ask that Guardian which policies it has</button>
+            {guardianNote ? <p className="text-quiet">{guardianNote}</p> : null}
           </section>
         ) : null}
 
-        {role === "business" ? (
-          <section className="mt-4 max-w-xl space-y-3 text-sm">
-            <Ask who="business" />
-            <h1 className="font-serif text-3xl leading-none">Business</h1>
+        {role === "business" && pane === "tonnes" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.business[0][2]}</p>
             {work.stage === "issued" ? (
               <p className="border border-rule bg-sheet p-3">{work.name}. Issued {work.issuedSum} t on {work.issuedAt.slice(0, 10)}. {locked.length} houses, {POLICY.perHouse} t each.</p>
             ) : work.stage === "verified" ? (
@@ -430,14 +477,14 @@ export function WorkDesk() {
                 </button>
               </>
             ) : (
-              <p>The checker has not verified the monitoring note yet.</p>
+              <p>{work.name || "No project yet"}. {locked.length} houses. {result.sum} t. The checker has not agreed the later note, so these tonnes are not issued.</p>
             )}
           </section>
         ) : null}
-
-        {role === "business" ? (
-          <section className="mt-4 space-y-3 text-sm">
-            <p>{work.name || "This project"}. {work.issuedSum || result.sum} t. Write who is taking them.</p>
+        {role === "business" && pane === "buyer" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.business[1][2]}</p>
+            <p>{work.name || "This project"}. {work.issuedSum || result.sum} t.</p>
             <label className="block">
               Buyer
               <input value={buyerName} onChange={(event) => setBuyerName(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />

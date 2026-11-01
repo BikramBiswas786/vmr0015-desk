@@ -37,13 +37,16 @@ export function FieldWalk({
   onSave,
   saved,
   ready,
+  step,
+  onStep,
 }: {
   onSave: (draft: Draft) => void;
   saved: number;
   ready: number;
+  step: string;
+  onStep: (step: string) => void;
 }) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [step, setStep] = useState("house");
   const [shot, setShot] = useState("");
   const [busy, setBusy] = useState(false);
   const [shown, setShown] = useState(false);
@@ -56,11 +59,11 @@ export function FieldWalk({
     const merged = { ...draft, ...patch };
     setDraft(merged);
     const list = stepsFor(merged);
-    setStep(list.includes(next) ? next : list[list.length - 1]);
+    onStep(list.includes(next) ? next : list[list.length - 1]);
   }
 
   function back() {
-    setStep(steps[Math.max(0, index - 1)]);
+    onStep(steps[Math.max(0, index - 1)]);
   }
 
   if (!shown) {
@@ -262,7 +265,7 @@ export function FieldWalk({
                 onSave({ ...draft, photo: shot });
                 setDraft(EMPTY);
                 setShot("");
-                setStep("house");
+                onStep("house");
               }}
               className="min-h-12 w-full bg-ink font-medium text-paper"
             >
