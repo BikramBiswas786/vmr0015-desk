@@ -2,6 +2,7 @@ import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/
 import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
+import { Markets } from "@/components/desk/Markets";
 import { Paper } from "@/components/desk/Paper";
 import { useState } from "react";
 
@@ -14,6 +15,7 @@ const ROLES = [
   ["guardian", "Guardian"],
   ["verra", "Verra"],
   ["buyer", "Buyer"],
+  ["markets", "Markets"],
   ["paper", "Paper"],
 ] as const;
 
@@ -357,6 +359,8 @@ export function WorkDesk() {
             <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">VMR0015 on Verra</a>
           </section>
         ) : null}
+
+        {role === "markets" ? <Markets stage={work.stage} /> : null}
 
         {role === "paper" ? <Paper /> : null}
 
