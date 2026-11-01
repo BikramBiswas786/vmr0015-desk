@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#f4f0e6" },
       {
         name: "description",
-        content: "Field notes, a checker, a Guardian hash, a Verra packet, and an offer that is not a purchase.",
+        content: "The VMR0015 Guardian policy for safe drinking water. Download the file, then follow the order inside it.",
       },
     ],
     links: [

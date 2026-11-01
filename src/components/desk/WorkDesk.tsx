@@ -3,6 +3,7 @@ import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, STAGE_LINE, useWork, type Stage } from "@/lib/desk/work";
 import { Markets } from "@/components/desk/Markets";
+import { PolicyHome } from "@/components/desk/PolicyHome";
 import { Paper } from "@/components/desk/Paper";
 import { useState } from "react";
 
@@ -19,7 +20,7 @@ const ROLES = [
   ["paper", "Paper"],
 ] as const;
 
-type Role = (typeof ROLES)[number][0];
+type Role = (typeof ROLES)[number][0] | "home";
 
 const APPS = [
   { href: GUARDIAN_URL, label: "Managed Guardian Service, where a policy is imported" },
@@ -43,7 +44,7 @@ function tonnesOf(count: number): string {
 export function WorkDesk() {
   const { visits, setVisits } = useVisits();
   const { work, setWork } = useWork();
-  const [role, setRole] = useState<Role>("field");
+  const [role, setRole] = useState<Role>("home");
   const [name, setName] = useState("");
   const [plant, setPlant] = useState("");
   const [starts, setStarts] = useState("");
@@ -180,11 +181,16 @@ export function WorkDesk() {
 
   return (
     <div className="min-h-dvh bg-ink text-ink">
-      <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-paper px-5 pt-6 pb-10">
+      <div className={`mx-auto flex min-h-dvh w-full flex-col bg-paper px-5 pt-6 pb-10 ${role === "home" ? "max-w-2xl" : "max-w-lg"}`}>
+        {role === "home" ? <PolicyHome onWork={() => setRole("field")} /> : null}
+        {role !== "home" ? (
+        <>
         <header>
           <div className="flex items-baseline justify-between gap-4">
-            <h1 className="font-serif text-3xl leading-none">Case file</h1>
-            <p className="text-xs tracking-widest text-quiet uppercase">VMR0015</p>
+            <h1 className="font-serif text-3xl leading-none">Working desk</h1>
+            <button type="button" onClick={() => setRole("home")} className="min-h-11 text-sm text-quiet">
+              Policy
+            </button>
           </div>
           <ol className="mt-5 flex gap-1" aria-label="Case stage">
             {RAIL.map(([id]) => (
@@ -397,6 +403,8 @@ export function WorkDesk() {
               </p>
             ))}
           </section>
+        ) : null}
+        </>
         ) : null}
       </div>
     </div>
