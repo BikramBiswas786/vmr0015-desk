@@ -3,6 +3,8 @@ import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
+import { vmrCheck } from "@/lib/desk/review";
+import { VENUES } from "@/lib/desk/markets";
 import { Criteria } from "@/components/desk/Criteria";
 import { useEffect, useState } from "react";
 
@@ -14,6 +16,8 @@ const JOBS = [
   ["developer", "Developer"],
   ["business", "Business"],
   ["guardian", "Guardian"],
+  ["verra", "Verra"],
+  ["market", "Market"],
 ] as const;
 
 type Role = "who" | (typeof JOBS)[number][0];
@@ -51,6 +55,14 @@ const SIDE: Record<Exclude<Role, "who">, [string, string, string][]> = {
     ["file", "Download the file", "A is for a project that starts before 1 January 2027. B is for a project that starts on or after that day."],
     ["import", "Import it in Guardian", "Open Guardian and import the file there. This page cannot import it for you."],
   ],
+  verra: [
+    ["check", "Check every question", "Each VMR0015 question is read against this project. A pass here is not a Verra approval."],
+    ["registry", "The registry", "The public registry is where a serial would be looked up after Verra issues it. This phone does not hold that login."],
+  ],
+  market: [
+    ["seller", "Who is selling", "Write your name. This is your name on this phone. It does not sign you into an exchange."],
+    ["where", "Where to sell", "A Verra unit is held on the Verra registry. An Indian certificate is sold by an industrial plant on a power exchange. Safe drinking water is not on that Indian list."],
+  ],
 };
 
 const APPS = [
@@ -81,6 +93,7 @@ export function WorkDesk() {
   const [buyerName, setBuyerName] = useState("");
   const [buyerTonnes, setBuyerTonnes] = useState("");
   const [buyerContact, setBuyerContact] = useState("");
+  const [seller, setSeller] = useState("");
   const [liveHash, setLiveHash] = useState("");
 
   const counted = visits.filter(countsTowardSample);
@@ -504,6 +517,60 @@ export function WorkDesk() {
               <p key={`${offer.at}-${offer.institution}`} className="border border-rule bg-sheet p-3">
                 {offer.institution}. {offer.tonnes} t. {offer.at.slice(0, 10)}. {offer.contact}
               </p>
+            ))}
+          </section>
+        ) : null}
+        {role === "verra" && pane === "check" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.verra[0][2]}</p>
+            <p>
+              {vmrCheck(work.criteria, locked).filter((line) => line.pass).length} passed.{" "}
+              {vmrCheck(work.criteria, locked).filter((line) => !line.pass).length} still open. Method {POLICY.method}.
+            </p>
+            {vmrCheck(work.criteria, locked).map((line) => (
+              <article key={line.ask} className="border border-rule bg-sheet p-3">
+                <p className="font-medium">{line.pass ? "Pass" : "Open"}. {line.ask}</p>
+                <p className="mt-1 leading-relaxed">{line.answer}</p>
+              </article>
+            ))}
+          </section>
+        ) : null}
+        {role === "verra" && pane === "registry" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.verra[1][2]}</p>
+            <a href="https://registry.verra.org/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">
+              Open the Verra registry
+            </a>
+            <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
+              VMR0015 on Verra
+            </a>
+            <button type="button" onClick={() => copy("verra", requestText)} className="min-h-12 w-full border border-rule bg-sheet">
+              {copied === "verra" ? "Copied" : "Copy the questions and the houses"}
+            </button>
+          </section>
+        ) : null}
+        {role === "market" && pane === "seller" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.market[0][2]}</p>
+            <label className="block">
+              Your name
+              <input value={seller} onChange={(event) => setSeller(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <p>{seller.trim() ? `${seller.trim()} is the name on this phone.` : "No name yet."}</p>
+          </section>
+        ) : null}
+        {role === "market" && pane === "where" ? (
+          <section className="max-w-xl space-y-3 text-sm">
+            <p className="leading-relaxed">{SIDE.market[1][2]}</p>
+            <p>{work.name || "This project"}. {work.issuedSum || result.sum} t on this phone. {seller.trim() || "No seller name yet"}.</p>
+            {VENUES.map((venue) => (
+              <article key={venue.name} className="border border-rule bg-sheet p-3">
+                <p className="font-medium">{venue.name}</p>
+                <p className="mt-1 leading-relaxed">{venue.trades} {venue.who}</p>
+                <a href={venue.href} target="_blank" rel="noreferrer" className="mt-3 flex min-h-12 items-center justify-center border border-rule bg-paper">
+                  {venue.label}
+                </a>
+              </article>
             ))}
           </section>
         ) : null}
