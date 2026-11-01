@@ -21,6 +21,15 @@ export type Report = {
   at: string;
 };
 
+export type Brought = {
+  guardianUrl: string;
+  guardianSeen: string;
+  verraAccount: string;
+  verraHub: "no" | "yes";
+  verraVvb: string;
+  serialSeen: string;
+};
+
 export type Work = {
   name: string;
   starts: string;
@@ -38,6 +47,7 @@ export type Work = {
   serial: string;
   offers: Offer[];
   reports: Report[];
+  brought: Brought;
 };
 
 export const EMPTY_WORK: Work = {
@@ -57,12 +67,25 @@ export const EMPTY_WORK: Work = {
   serial: "",
   offers: [],
   reports: [],
+  brought: { guardianUrl: "", guardianSeen: "", verraAccount: "", verraHub: "no", verraVvb: "", serialSeen: "" },
 };
 
 const STAGES: Stage[] = ["open", "described", "validated", "monitoring", "verified", "issued"];
 
 export function isStage(value: unknown): value is Stage {
   return typeof value === "string" && STAGES.includes(value as Stage);
+}
+
+function broughtOf(value: unknown): Brought {
+  const row = value && typeof value === "object" ? (value as Partial<Brought>) : {};
+  return {
+    guardianUrl: typeof row.guardianUrl === "string" ? row.guardianUrl.slice(0, 200) : "",
+    guardianSeen: typeof row.guardianSeen === "string" ? row.guardianSeen.slice(0, 200) : "",
+    verraAccount: typeof row.verraAccount === "string" ? row.verraAccount.slice(0, 200) : "",
+    verraHub: row.verraHub === "yes" ? "yes" : "no",
+    verraVvb: typeof row.verraVvb === "string" ? row.verraVvb.slice(0, 200) : "",
+    serialSeen: typeof row.serialSeen === "string" ? row.serialSeen.slice(0, 80) : "",
+  };
 }
 
 function criteriaOf(value: unknown): CriteriaAnswers {
@@ -95,6 +118,7 @@ export function loadWork(): Work {
       serial: typeof parsed.serial === "string" ? parsed.serial : "",
       offers: Array.isArray(parsed.offers) ? parsed.offers.slice(0, 20) : [],
       reports: Array.isArray(parsed.reports) ? parsed.reports.filter((row) => row && Array.isArray(row.visitIds)).slice(0, 20) : [],
+      brought: broughtOf(parsed.brought),
     };
   } catch {
     return EMPTY_WORK;

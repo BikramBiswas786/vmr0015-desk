@@ -1,7 +1,7 @@
 import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
 import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY, companyPacket, policyIssue, verraPacket } from "@/lib/desk/policy";
-import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
+import { chainHash, lockedVisits, useWork, type Stage, type Work } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
 import { askGuide, knownAnswer } from "@/lib/desk/askGuide";
 import { vmrCheck } from "@/lib/desk/review";
@@ -166,6 +166,10 @@ export function WorkDesk() {
     if (rows.length === 0) return;
     void chainHash(rows).then(setLiveHash);
   }, [work.chain, work.visitIds, visits]);
+
+  function bring(partial: Partial<Work["brought"]>) {
+    setWork({ ...work, brought: { ...work.brought, ...partial } });
+  }
 
   function choose(next: Role) {
     setRole(next);
@@ -374,6 +378,11 @@ export function WorkDesk() {
               <input value={crewCode} onChange={(event) => keepCode(event.target.value)} autoComplete="off" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
             </label>
             {crewNote ? <p className="mt-2 text-sm text-quiet">{crewNote}</p> : null}
+            <ul className="mt-4 space-y-1 text-sm">
+              <li>Guardian. {work.brought.guardianSeen ? `Brought back: ${work.brought.guardianSeen}. This is not an approval.` : "Still open. The Guardian job has the steps."}</li>
+              <li>Verra. {work.brought.verraAccount ? `Brought back: ${work.brought.verraAccount}. This is not a registered project.` : "Still open. The Verra job has the steps."}</li>
+              <li>Buyer. {work.brought.serialSeen ? `Brought back: ${work.brought.serialSeen}. This phone did not check that serial.` : "Waiting. No serial exists until Verra deposits one."}</li>
+            </ul>
             <div className="mt-4 grid gap-2">
               <button type="button" onClick={() => void copy("guardian-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "guardian-note" ? "Copied" : "Copy the note for the Guardian team"}</button>
               <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "verra-note" ? "Copied" : "Copy the note for Verra"}</button>
@@ -504,6 +513,15 @@ export function WorkDesk() {
         {role === "guardian" && pane === "file" ? (
           <section className="max-w-xl space-y-3 text-sm">
             <p className="leading-relaxed">{SIDE.guardian[0][2]}</p>
+            <ol className="list-decimal space-y-2 pl-5">
+              <li>Open Managed Guardian Service and create your own tenant. The login is on their site, not here.</li>
+              <li>The person who imports the file needs the Standard Registry role. Their quick start puts that on the Users tab.</li>
+              <li>Download file A if the project starts before 1 January 2027. Download file B if it starts on or after that day.</li>
+              <li>On Guardian, open Policies and import that file. Then use Dry Run. A dry-run result is not a Verra serial.</li>
+              <li>Come back to Import it in Guardian and write the address and the policy name you saw.</li>
+            </ol>
+            <a href="https://guardianservice.io/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">Open Managed Guardian Service</a>
+            <a href="https://docs.guardianservice.io/overview/quick-start-mgs" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">Guardian quick start</a>
             <a href={FILES.find((file) => file.version === "v3.1" && file.id === "A")?.href ?? FILES[0].href} download className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">
               Download file A
             </a>
@@ -529,8 +547,13 @@ export function WorkDesk() {
             <p className="border border-rule bg-sheet p-3 break-all">{work.chain || "No house list is locked yet. The developer does that first."}</p>
             <label className="block">
               Your Guardian address, if you already run one
-              <input value={guardianUrl} onChange={(event) => setGuardianUrl(event.target.value)} placeholder="https://…" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+              <input value={guardianUrl} onChange={(event) => { setGuardianUrl(event.target.value); bring({ guardianUrl: event.target.value }); }} placeholder="https://…" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
             </label>
+            <label className="block">
+              Policy name you saw after import
+              <input value={work.brought.guardianSeen} onChange={(event) => bring({ guardianSeen: event.target.value })} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <p className="text-quiet">Writing the name here records that you came back. It does not mean Guardian or Verra approved the file.</p>
             <label className="block">
               Your token
               <input value={token} onChange={(event) => setToken(event.target.value)} type="password" autoComplete="off" className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
@@ -629,9 +652,32 @@ export function WorkDesk() {
         {role === "verra" && pane === "registry" ? (
           <section className="max-w-xl space-y-3 text-sm">
             <p className="leading-relaxed">{SIDE.verra[2][2]}</p>
-            <a href="https://registry.verra.org/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">
-              Open the Verra registry
-            </a>
+            <ol className="list-decimal space-y-2 pl-5">
+              <li>Open the Verra registry and choose Open New Account. You need the account type that can register a project. Verra’s 2026 registry notes call that a Project Developer account.</li>
+              <li>Verra runs a Know Your Customer check and then approves or refuses the account. Wait for that. Do not send this phone’s note as the application.</li>
+              <li>When the account is approved, the fee schedule v1.2 lists USD 750 to open it and USD 750 a year to keep it. Pay Verra, not this page.</li>
+              <li>Email hubsupport@verra.org and ask for Verra Project Hub access. Their October 2026 quick reference says to do that after the account is approved.</li>
+              <li>A project, later, also needs a validation body chosen from Verra’s list. The same fee schedule lists USD 1500 to request pipeline listing and USD 3750 to request registration review. Do not pay those until a real project description exists.</li>
+              <li>Come back and write the account name, whether Project Hub access was granted, and the validation body’s name if you have chosen one.</li>
+            </ol>
+            <a href="https://registry.verra.org/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">Open the Verra registry</a>
+            <a href="https://verra.org/documents/verra-program-fee-schedule-v1-2/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">Fee schedule v1.2</a>
+            <label className="block">
+              Account name, as the registry shows it
+              <input value={work.brought.verraAccount} onChange={(event) => bring({ verraAccount: event.target.value })} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <label className="block">
+              Project Hub access
+              <select value={work.brought.verraHub} onChange={(event) => bring({ verraHub: event.target.value === "yes" ? "yes" : "no" })} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-2">
+                <option value="no">Not yet</option>
+                <option value="yes">Granted</option>
+              </select>
+            </label>
+            <label className="block">
+              Validation body, if chosen
+              <input value={work.brought.verraVvb} onChange={(event) => bring({ verraVvb: event.target.value })} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <p className="text-quiet">This records what you brought back. It does not register a project.</p>
             <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
               VMR0015 on Verra
             </a>
@@ -657,6 +703,17 @@ export function WorkDesk() {
         {role === "market" && pane === "where" ? (
           <section className="max-w-xl space-y-3 text-sm">
             <p className="leading-relaxed">{SIDE.market[1][2]}</p>
+            <ol className="list-decimal space-y-2 pl-5">
+              <li>Nobody can buy a credit from this phone. A buyer can take a unit only after Verra deposits it and the registry shows a serial.</li>
+              <li>The buyer opens their own registry account. Verra’s older guide said a project-proponent account cannot receive a transfer. Ask Verra which current account type can receive units before anyone pays.</li>
+              <li>The transfer is done on the registry, by the account holder and the buyer. This page cannot do it.</li>
+              <li>When a serial exists, copy it from registry.verra.org and paste it below. Until then, leave this blank and do not take money.</li>
+            </ol>
+            <label className="block">
+              Serial copied from the registry
+              <input value={work.brought.serialSeen} onChange={(event) => bring({ serialSeen: event.target.value })} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
+            </label>
+            <p className="text-quiet">Pasting a serial here does not check it. Look it up on the registry.</p>
             <p>{work.name || "This project"}. {work.issuedSum || result.sum} t on this phone. {seller.trim() || "No seller name yet"}.</p>
             {VENUES.map((venue) => (
               <article key={venue.name} className="border border-rule bg-sheet p-3">
