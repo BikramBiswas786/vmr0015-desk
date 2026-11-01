@@ -8,6 +8,7 @@ import { Markets } from "@/components/desk/Markets";
 import { Guide } from "@/components/desk/Guide";
 import { PolicyHome } from "@/components/desk/PolicyHome";
 import { Paper } from "@/components/desk/Paper";
+import { SectionBrief } from "@/components/desk/SectionBrief";
 import { useState } from "react";
 
 const RATE = Number(POLICY.perHouse);
@@ -188,6 +189,7 @@ export function WorkDesk() {
         ))}
       </nav>
       <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-8">
+        {role !== "guide" ? <SectionBrief role={role} onGo={setRole} /> : null}
         {role === "guide" ? <Guide onGo={(next) => setRole(next)} /> : null}
         {role === "home" ? <PolicyHome onWork={() => setRole("field")} /> : null}
         {role === "field" || role === "checker" || role === "developer" || role === "issue" ? (
