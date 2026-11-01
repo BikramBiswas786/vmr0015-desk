@@ -1,6 +1,6 @@
 import { countsTowardSample, ruleGap, rulePass, useVisits, type Visit } from "@/lib/desk/field";
 import { FieldWalk } from "@/components/desk/FieldWalk";
-import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
+import { FILES, GUARDIAN_URL, POLICY, companyPacket, policyIssue, verraPacket } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
 import { askGuide, knownAnswer } from "@/lib/desk/askGuide";
@@ -59,7 +59,7 @@ const SIDE: Record<Exclude<Role, "who">, [string, string, string][]> = {
     ["note", "The later visit", "After the checker says yes, write what you saw when the houses were visited again."],
   ],
   business: [
-    ["tonnes", "The tonnes", "One house that passed is 0.519 tonnes. You can issue them only after the checker has agreed the later note."],
+    ["tonnes", "The tonnes", "The 0.519 figure is the old test file. This phone does not issue it. Verra issues a serial, later, on the registry."],
     ["buyer", "Who is buying", "Write the buyer's name, how many tonnes, and how to reach them."],
   ],
   guardian: [
@@ -269,21 +269,6 @@ export function WorkDesk() {
     setPane("house");
   }
 
-  async function issueCredit() {
-    if (locked.length === 0) return;
-    const now = await chainHash(locked);
-    if (work.chain && now !== work.chain) return;
-    const issued = policyIssue(locked.length);
-    setLiveHash(now);
-    setWork({
-      ...work,
-      stage: "issued",
-      issuedSum: issued.sum,
-      issuedWhole: Number(issued.sum),
-      issuedAt: new Date().toISOString(),
-    });
-  }
-
   function recordBuyer() {
     const who = buyerName.trim();
     const tonnes = Number(buyerTonnes);
@@ -296,23 +281,6 @@ export function WorkDesk() {
     setBuyerTonnes("");
     setBuyerContact("");
   }
-
-  const policyFile = FILES.find((file) => file.importThis && file.id === (work.setId || "A")) ?? FILES[0];
-  const requestText = [
-    `Policy: ${policyFile.guardianName}.`,
-    `File: ${policyFile.name}.`,
-    `SHA-256: ${policyFile.sha}.`,
-    `Methodology: ${POLICY.method}, ${POLICY.methodName}. A revision of ${POLICY.parent}.`,
-    `Template: ${policyFile.when}.`,
-    `The file's own version field is Dry Run. This packet is not a Verra project description and not a VCU.`,
-    `${work.name || "Untitled"}. ${work.plant || "No treatment point named."}.`,
-    `Applicability: ${criteriaPass(work.criteria) ? "the seven answers pass" : "the seven answers are missing or void the calculation"}.`,
-    `Houses in the lock: ${work.visitIds.length}. Sample ${sampleTonnes} t at ${POLICY.perHouse} t each. That rate is the test file, not this project's calculation.`,
-    work.chain ? `Chain ${work.chain}` : "No chain yet.",
-    chainState === "match" ? "The houses still match that chain." : chainState === "pending" ? "The chain is still being checked." : chainState === "break" ? "The houses do not match the locked chain." : "No chain yet.",
-    "",
-    ...locked.map((visit, index) => `${index + 1}. ${visit.house}. ${visit.shape === "kiosk" ? "Drum from a treatment point" : "Filter in the house"}, ${visit.treatment}. No public safe-water pipe. Boils with ${visit.fuel}. Water passed. ${visit.takenAt.slice(0, 10)}.`),
-  ].join("\n");
 
   return (
     <div className="flex min-h-dvh bg-paper text-ink">
@@ -342,7 +310,12 @@ export function WorkDesk() {
         {role === "who" ? (
           <section className="max-w-xl">
             <h1 className="font-serif text-4xl leading-none">Who are you</h1>
-            <p className="mt-4 text-sm leading-relaxed">These are jobs, not logins. There is no password on this page. Pick one. The left side then shows that job's steps, and each step has a Next.</p>
+            <p className="mt-4 text-sm leading-relaxed">Tomorrow, start as the field worker and walk one house. You can also copy three notes. The Guardian note sends the policy file. The Verra note says this is not a project registration. The business note says this is not a credit for sale. None of them opens a registry account.</p>
+            <div className="mt-4 grid gap-2">
+              <button type="button" onClick={() => void copy("guardian-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "guardian-note" ? "Copied" : "Copy the note for the Guardian team"}</button>
+              <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "verra-note" ? "Copied" : "Copy the note for Verra"}</button>
+              <button type="button" onClick={() => void copy("business-note", companyPacket(null, ""))} className="min-h-12 border border-rule bg-sheet px-3 text-left text-sm">{copied === "business-note" ? "Copied" : "Copy the note for a water business"}</button>
+            </div>
             <div className="mt-6 grid gap-3">
               {JOBS.map(([id, label]) => (
                 <button key={id} type="button" onClick={() => choose(id)} className="min-h-14 border border-rule bg-sheet px-4 py-3 text-left">
@@ -473,6 +446,10 @@ export function WorkDesk() {
             <a href={FILES.find((file) => file.version === "v3.1" && file.id === "B")?.href ?? FILES[0].href} download className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
               Download file B
             </a>
+            <button type="button" onClick={() => void copy("guardian-note", verraPacket())} className="min-h-12 w-full border border-rule bg-sheet">
+              {copied === "guardian-note" ? "Copied" : "Copy the note for the Guardian team"}
+            </button>
+            <p className="text-quiet">Send the file and that note. The note says the pull request is open and the dry-run is not a Verra serial.</p>
           </section>
         ) : null}
         {role === "guardian" && pane === "import" ? (
@@ -502,18 +479,11 @@ export function WorkDesk() {
         {role === "business" && pane === "tonnes" ? (
           <section className="max-w-xl space-y-3 text-sm">
             <p className="leading-relaxed">{SIDE.business[0][2]}</p>
-            {work.stage === "issued" ? (
-              <p className="border border-rule bg-sheet p-3">{work.name}. Issued {work.issuedSum} t on {work.issuedAt.slice(0, 10)}. {locked.length} houses, {POLICY.perHouse} t each.</p>
-            ) : work.stage === "verified" ? (
-              <>
-                <p>{work.name}. {locked.length} houses. {result.sum} t.</p>
-                <button type="button" onClick={() => void issueCredit()} className="min-h-12 w-full bg-ink font-medium text-paper">
-                  Issue {result.sum} t
-                </button>
-              </>
-            ) : (
-              <p>{work.name || "No project yet"}. {locked.length} houses. {result.sum} t. The checker has not agreed the later note, so these tonnes are not issued.</p>
-            )}
+            {work.stage === "issued" ? <p className="text-seal">A number stored on this phone earlier is not a Verra issuance.</p> : null}
+            <p className="border border-rule bg-sheet p-3">{work.name || "No project yet"}. {locked.length} houses. Sample {result.sum} t at {POLICY.perHouse} t each. Not issued.</p>
+            <button type="button" onClick={() => void copy("business-note", companyPacket(null, work.plant || work.name))} className="min-h-12 w-full border border-rule bg-sheet">
+              {copied === "business-note" ? "Copied" : "Copy the note for a water business"}
+            </button>
           </section>
         ) : null}
         {role === "business" && pane === "buyer" ? (
@@ -601,8 +571,8 @@ export function WorkDesk() {
             <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">
               VMR0015 on Verra
             </a>
-            <button type="button" onClick={() => copy("verra", requestText)} className="min-h-12 w-full border border-rule bg-sheet">
-              {copied === "verra" ? "Copied" : "Copy the questions and the houses"}
+            <button type="button" onClick={() => void copy("verra-note", verraPacket())} className="min-h-12 w-full border border-rule bg-sheet">
+              {copied === "verra-note" ? "Copied" : "Copy the note for Verra"}
             </button>
             <p className="text-quiet">This is the last step of the Verra job. The registry login is Verra's. This phone does not have it.</p>
           </section>
