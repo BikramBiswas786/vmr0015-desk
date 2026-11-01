@@ -17,7 +17,24 @@ const PACKET = [
   ...CONDITIONS.map((condition) => `${condition.ask} Allowed: ${condition.options.join(" | ")}.`),
   "India's carbon-certificate exchanges are for industrial plants. Safe drinking water is not on the BEE offset list. The same house is not counted on both.",
   "The public lookup after Verra issues a serial is https://registry.verra.org/.",
+  "Verra writes the rule for this water method, VMR0015. Later, only Verra can put a serial in the public registry. This phone does not log into Verra. A pass on this phone is not Verra's approval.",
+  "Guardian is the program that runs the policy file after someone imports it on Guardian's own site. This phone does not log into Guardian. The Guardian job here only downloads the file.",
+  "A name typed on this phone is a label for the person holding the phone. It is not a login to Verra, Guardian, or an exchange, and it does not sell a credit.",
 ].join("\n");
+
+export function knownAnswer(question: string): string | null {
+  const q = question.toLowerCase();
+  if (q.includes("verra")) {
+    return "Verra writes the rule for this water method, VMR0015. Later, only Verra can put a serial in the public registry. This page does not log into Verra. Next, open Check every question. A pass there is not Verra's approval.";
+  }
+  if (q.includes("guardian")) {
+    return "Guardian is the program that runs the policy file after you import it on Guardian's own site. This phone cannot log in for you. Open the Guardian job and download file A or B.";
+  }
+  if (q.includes("name") || q.includes("selling") || q.includes("login")) {
+    return "A name on this phone is a label. It is not a login to Verra, Guardian, or an exchange, and it does not sell anything. On Market, the next step is Where to sell.";
+  }
+  return null;
+}
 
 export type GuideLine = { ask: string; answer: string; pass: boolean };
 
@@ -48,7 +65,7 @@ export const askGuide = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              "You guide a person who is not a technician. Answer only their question, in plain sentences, under 120 words. Use only the packet and this project's check. If the packet does not say it, say that it is not in the packet. Never say Verra has approved this project or issued a serial. Do not answer a different question from the one they asked.",
+              "You guide a person who is not a technician. Answer only their question, in plain sentences, under 120 words. Use the packet. The packet says what Verra is and what Guardian is. Never say Verra has approved this project or issued a serial. Do not answer a different question from the one they asked.",
           },
           { role: "user", content: `Packet:\n${PACKET}\n\nThis project:\n${project || "No houses locked."}\n\nQuestion: ${data.question}` },
         ],

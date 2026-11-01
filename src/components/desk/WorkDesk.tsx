@@ -3,7 +3,7 @@ import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
-import { askGuide } from "@/lib/desk/askGuide";
+import { askGuide, knownAnswer } from "@/lib/desk/askGuide";
 import { vmrCheck } from "@/lib/desk/review";
 import { VENUES } from "@/lib/desk/markets";
 import { Criteria } from "@/components/desk/Criteria";
@@ -22,6 +22,16 @@ const JOBS = [
 ] as const;
 
 type Role = "who" | (typeof JOBS)[number][0];
+
+const JOB_LINE: Record<Exclude<Role, "who">, string> = {
+  drum: "At the door. Not a login.",
+  check: "A second person looks at the photo. Not a login.",
+  developer: "Names the project and locks the houses. Not a login.",
+  business: "Reads the tonnes. Does not sell them.",
+  guardian: "Downloads the policy file. The login is on Guardian's own site.",
+  verra: "Reads the rules. The login is Verra's, not here.",
+  market: "Shows where a real unit would sit. Nothing is sold here.",
+};
 
 const SIDE: Record<Exclude<Role, "who">, [string, string, string][]> = {
   drum: [
@@ -57,12 +67,12 @@ const SIDE: Record<Exclude<Role, "who">, [string, string, string][]> = {
     ["import", "Import it in Guardian", "Open Guardian and import the file there. This page cannot import it for you."],
   ],
   verra: [
-    ["ask", "Ask", "Ask one question. The guide reads the VMR0015 packet and this project's check, then answers that question."],
+    ["ask", "Ask", "Ask what a word means. Verra, Guardian, the water test, the drum. Then press Next."],
     ["check", "Check every question", "Each VMR0015 question is read against this project. A pass here is not a Verra approval."],
     ["registry", "The registry", "The public registry is where a serial would be looked up after Verra issues it. This phone does not hold that login."],
   ],
   market: [
-    ["seller", "Who is selling", "Write your name. This is your name on this phone. It does not sign you into an exchange."],
+    ["seller", "Who is selling", "The name is a label on this phone. It is not a login, and it does not sell anything. Press Next."],
     ["where", "Where to sell", "A Verra unit is held on the Verra registry. An Indian certificate is sold by an industrial plant on a power exchange. Safe drinking water is not on that Indian list."],
   ],
 };
@@ -332,11 +342,12 @@ export function WorkDesk() {
         {role === "who" ? (
           <section className="max-w-xl">
             <h1 className="font-serif text-4xl leading-none">Who are you</h1>
-            <p className="mt-4 text-sm leading-relaxed">Pick your job. After that, the left side shows only your steps, in plain words. Another person can press Change job and pick theirs.</p>
+            <p className="mt-4 text-sm leading-relaxed">These are jobs, not logins. There is no password on this page. Pick one. The left side then shows that job's steps, and each step has a Next.</p>
             <div className="mt-6 grid gap-3">
               {JOBS.map(([id, label]) => (
-                <button key={id} type="button" onClick={() => choose(id)} className="min-h-14 border border-rule bg-sheet px-4 text-left font-serif text-2xl">
-                  {label}
+                <button key={id} type="button" onClick={() => choose(id)} className="min-h-14 border border-rule bg-sheet px-4 py-3 text-left">
+                  <span className="block font-serif text-2xl">{label}</span>
+                  <span className="mt-1 block text-sm">{JOB_LINE[id]}</span>
                 </button>
               ))}
             </div>
@@ -542,6 +553,11 @@ export function WorkDesk() {
               type="button"
               disabled={asking || !askQ.trim()}
               onClick={() => {
+                const known = knownAnswer(askQ);
+                if (known) {
+                  setAskA(known);
+                  return;
+                }
                 setAsking(true);
                 void askGuide({ data: { question: askQ, lines: vmrCheck(work.criteria, locked) } })
                   .then((result) => setAskA(result.text))
@@ -553,6 +569,9 @@ export function WorkDesk() {
               {asking ? "Reading the packet…" : "Get the answer"}
             </button>
             <p className="border border-rule bg-sheet p-3 leading-relaxed">{askA || "The answer appears here, for the question you asked."}</p>
+            <button type="button" onClick={() => setPane("check")} className="min-h-12 w-full border border-rule bg-sheet">
+              Next: Check every question
+            </button>
           </section>
         ) : null}
         {role === "verra" && pane === "check" ? (
@@ -568,6 +587,9 @@ export function WorkDesk() {
                 <p className="mt-1 leading-relaxed">{line.answer}</p>
               </article>
             ))}
+            <button type="button" onClick={() => setPane("registry")} className="min-h-12 w-full border border-rule bg-sheet">
+              Next: The registry
+            </button>
           </section>
         ) : null}
         {role === "verra" && pane === "registry" ? (
@@ -582,6 +604,7 @@ export function WorkDesk() {
             <button type="button" onClick={() => copy("verra", requestText)} className="min-h-12 w-full border border-rule bg-sheet">
               {copied === "verra" ? "Copied" : "Copy the questions and the houses"}
             </button>
+            <p className="text-quiet">This is the last step of the Verra job. The registry login is Verra's. This phone does not have it.</p>
           </section>
         ) : null}
         {role === "market" && pane === "seller" ? (
@@ -591,7 +614,10 @@ export function WorkDesk() {
               Your name
               <input value={seller} onChange={(event) => setSeller(event.target.value)} className="mt-1 min-h-12 w-full border border-rule bg-sheet px-3" />
             </label>
-            <p>{seller.trim() ? `${seller.trim()} is the name on this phone.` : "No name yet."}</p>
+            <p>{seller.trim() ? `${seller.trim()} is the name on this phone. It is not a login.` : "No name yet. You can leave this blank and still go on."}</p>
+            <button type="button" onClick={() => setPane("where")} className="min-h-12 w-full bg-ink font-medium text-paper">
+              Next: Where to sell
+            </button>
           </section>
         ) : null}
         {role === "market" && pane === "where" ? (
@@ -607,6 +633,7 @@ export function WorkDesk() {
                 </a>
               </article>
             ))}
+            <p className="text-quiet">This is the last step. Nothing on this phone is for sale.</p>
           </section>
         ) : null}
       </main>
