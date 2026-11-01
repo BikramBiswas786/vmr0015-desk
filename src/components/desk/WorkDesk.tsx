@@ -3,7 +3,7 @@ import { FieldWalk } from "@/components/desk/FieldWalk";
 import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
-import { guideAnswer } from "@/lib/desk/guideBook";
+import { askGuide } from "@/lib/desk/askGuide";
 import { vmrCheck } from "@/lib/desk/review";
 import { VENUES } from "@/lib/desk/markets";
 import { Criteria } from "@/components/desk/Criteria";
@@ -57,7 +57,7 @@ const SIDE: Record<Exclude<Role, "who">, [string, string, string][]> = {
     ["import", "Import it in Guardian", "Open Guardian and import the file there. This page cannot import it for you."],
   ],
   verra: [
-    ["ask", "Ask", "Ask in ordinary words. The guide uses the VMR0015 questions, the CDM parts in the policy file, and this project's answers."],
+    ["ask", "Ask", "Ask one question. The guide reads the VMR0015 packet and this project's check, then answers that question."],
     ["check", "Check every question", "Each VMR0015 question is read against this project. A pass here is not a Verra approval."],
     ["registry", "The registry", "The public registry is where a serial would be looked up after Verra issues it. This phone does not hold that login."],
   ],
@@ -98,6 +98,7 @@ export function WorkDesk() {
   const [seller, setSeller] = useState("");
   const [askQ, setAskQ] = useState("");
   const [askA, setAskA] = useState("");
+  const [asking, setAsking] = useState(false);
   const [liveHash, setLiveHash] = useState("");
 
   const counted = visits.filter(countsTowardSample);
@@ -533,12 +534,19 @@ export function WorkDesk() {
             </label>
             <button
               type="button"
-              onClick={() => setAskA(guideAnswer(askQ, vmrCheck(work.criteria, locked)).body)}
-              className="min-h-12 w-full bg-ink font-medium text-paper"
+              disabled={asking || !askQ.trim()}
+              onClick={() => {
+                setAsking(true);
+                void askGuide({ data: { question: askQ, lines: vmrCheck(work.criteria, locked) } })
+                  .then((result) => setAskA(result.text))
+                  .catch(() => setAskA("The guide could not answer just now. Try again."))
+                  .finally(() => setAsking(false));
+              }}
+              className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40"
             >
-              Ask
+              {asking ? "Reading the packet…" : "Get the answer"}
             </button>
-            <p className="border border-rule bg-sheet p-3 leading-relaxed">{askA || guideAnswer("", vmrCheck(work.criteria, locked)).body}</p>
+            <p className="border border-rule bg-sheet p-3 leading-relaxed">{askA || "The answer appears here, for the question you asked."}</p>
           </section>
         ) : null}
         {role === "verra" && pane === "check" ? (
