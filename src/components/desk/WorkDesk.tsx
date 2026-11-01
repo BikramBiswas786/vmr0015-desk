@@ -4,27 +4,18 @@ import { FILES, GUARDIAN_URL, POLICY, policyIssue } from "@/lib/desk/policy";
 import { chainHash, lockedVisits, useWork, type Stage } from "@/lib/desk/work";
 import { criteriaPass, CONDITIONS } from "@/lib/desk/criteria";
 import { Criteria } from "@/components/desk/Criteria";
-import { Markets } from "@/components/desk/Markets";
-import { Guide } from "@/components/desk/Guide";
-import { PolicyHome } from "@/components/desk/PolicyHome";
-import { Paper } from "@/components/desk/Paper";
+import { Ask } from "@/components/desk/Ask";
 import { useEffect, useState } from "react";
 
 const RATE = Number(POLICY.perHouse);
 
 const NAV = [
-  ["guide", "Guide"],
-  ["home", "Files"],
-  ["field", "Houses"],
-  ["checker", "Check"],
-  ["developer", "Describe"],
+  ["who", "Who"],
+  ["drum", "Drum boy"],
+  ["check", "Checker"],
+  ["developer", "Developer"],
+  ["business", "Business"],
   ["guardian", "Guardian"],
-  ["verra", "Verra"],
-  ["registry", "Registry"],
-  ["issue", "Issue"],
-  ["markets", "Markets"],
-  ["buyer", "Offers"],
-  ["paper", "Notes"],
 ] as const;
 
 type Role = (typeof NAV)[number][0];
@@ -43,7 +34,7 @@ function tonnesOf(count: number): string {
 export function WorkDesk() {
   const { visits, setVisits } = useVisits();
   const { work, setWork } = useWork();
-  const [role, setRole] = useState<Role>("guide");
+  const [role, setRole] = useState<Role>("who");
   const [name, setName] = useState("");
   const [plant, setPlant] = useState("");
   const [starts, setStarts] = useState("");
@@ -59,6 +50,8 @@ export function WorkDesk() {
   const [liveHash, setLiveHash] = useState("");
 
   const counted = visits.filter(countsTowardSample);
+  const usedIds = new Set([...work.visitIds, ...work.reports.flatMap((report) => report.visitIds)]);
+  const free = counted.filter((visit) => !usedIds.has(visit.id));
   const locked = lockedVisits(work, visits);
   const chainState =
     work.chain === "" ? "none" : liveHash === "" ? "pending" : liveHash === work.chain ? "match" : "break";
@@ -92,11 +85,14 @@ export function WorkDesk() {
   async function lockDescription() {
     const title = name.trim();
     const point = plant.trim();
-    if (!title || !point || counted.length === 0 || work.stage !== "open" || !criteriaPass(work.criteria)) return;
-    const chosen = counted;
+    const used = new Set([...work.visitIds, ...work.reports.flatMap((report) => report.visitIds)]);
+    const chosen = counted.filter((visit) => !used.has(visit.id));
+    if (!title || !point || chosen.length === 0 || !criteriaPass(work.criteria)) return;
     const chain = await chainHash(chosen);
+    const reports = work.stage === "open" || !work.name ? work.reports : [...work.reports, { name: work.name, plant: work.plant, visitIds: work.visitIds, sum: work.issuedSum, at: work.issuedAt || new Date().toISOString() }].slice(0, 20);
     setWork({
       ...work,
+      reports,
       name: title,
       plant: point,
       criteria: work.criteria,
@@ -107,6 +103,9 @@ export function WorkDesk() {
       chain,
       validationNote: "",
       monitoringNote: "",
+      issuedSum: "",
+      issuedWhole: 0,
+      issuedAt: "",
       offers: [],
     });
     setLiveHash(chain);
@@ -198,7 +197,7 @@ export function WorkDesk() {
       offers: [],
     });
     setLiveHash(chain);
-    setRole("guide");
+    setRole("drum");
   }
 
   async function issueCredit() {
@@ -251,7 +250,7 @@ export function WorkDesk() {
             aria-current={role === id ? "page" : undefined}
             onClick={() => {
               setRole(id);
-              if (id === "guardian" || id === "buyer" || id === "verra") void refreshHash();
+              if (id === "guardian") void refreshHash();
             }}
             className={`min-h-11 px-2 text-left text-sm ${role === id ? "bg-ink text-paper" : ""}`}
           >
@@ -260,11 +259,23 @@ export function WorkDesk() {
         ))}
       </nav>
       <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-8">
-        {role === "guide" ? <Guide onGo={(next) => setRole(next)} onDemo={() => void loadDemo()} /> : null}
-        {role === "home" ? <PolicyHome onWork={() => setRole("field")} /> : null}
+        {role === "who" ? (
+          <section className="max-w-xl">
+            <h1 className="font-serif text-4xl leading-none">Who is signing in</h1>
+            <p className="mt-4 text-sm leading-relaxed">Pick a job. The next person picks their own. A finished description does not close the photo, the check, or the next project.</p>
+            <div className="mt-6 grid gap-3">
+              {NAV.filter(([id]) => id !== "who").map(([id, label]) => (
+                <button key={id} type="button" onClick={() => setRole(id)} className="min-h-14 border border-rule bg-sheet px-4 text-left font-serif text-2xl">
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
-        {role === "field" ? (
+        {role === "drum" ? (
           <>
+            <Ask who="drum" />
             {visits.map((visit) => (
               <p key={visit.id} className="mb-2 border border-rule bg-sheet p-3 text-sm">
                 {visit.house}. {visit.persons} people. {visit.fuel}. {visit.shape === "kiosk" ? "Drum" : "House filter"}, {visit.treatment}. {visit.status}.
@@ -275,12 +286,10 @@ export function WorkDesk() {
           </>
         ) : null}
 
-        {role === "developer" && work.stage === "open" ? (
+        {role === "developer" && work.stage !== "validated" ? (
           <section className="mt-4 space-y-3 text-sm">
-            <h2 className="font-serif text-3xl leading-tight">Project description</h2>
-            <p>Name the project, then lock the houses.</p>
-            {work.stage === "open" ? (
-              <>
+            <Ask who="developer" />
+            {work.name && work.stage !== "open" ? <p>{work.name}. {work.plant}. {work.visitIds.length} houses already in this description.</p> : null}
                 <Criteria
                   answers={work.criteria}
                   onAnswer={(id, value) => setWork({ ...work, criteria: { ...work.criteria, [id]: value } })}
@@ -306,14 +315,12 @@ export function WorkDesk() {
                     <option value="B">v3.1 B, on or after 1 January 2027</option>
                   </select>
                 </label>
-                <button type="button" disabled={!name.trim() || !plant.trim() || counted.length === 0} onClick={lockDescription} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
-                  Lock {counted.length} houses
+                <button type="button" disabled={!name.trim() || !plant.trim() || free.length === 0} onClick={lockDescription} className="min-h-12 w-full bg-ink font-medium text-paper disabled:opacity-40">
+                  {work.stage === "open" ? `Lock ${free.length} houses` : `New description, ${free.length} houses`}
                 </button>
-                {counted.length === 0 ? <p className="text-quiet">Nothing to lock. A house needs people, boiling with wood or charcoal that is not all done on an improved stove, no public safe-water pipe, a passed test, a photo, and an allowed treatment.</p> : null}
+                {free.length === 0 ? <p className="text-quiet">No new accepted house. The drum boy takes a photo, then the checker accepts it.</p> : null}
                   </>
                 ) : null}
-              </>
-            ) : null}
           </section>
         ) : null}
         {role === "developer" && work.stage === "validated" ? (
@@ -329,30 +336,29 @@ export function WorkDesk() {
           </section>
         ) : null}
 
-        {role === "checker" ? (
+        {role === "check" ? (
           <section className="mt-4 space-y-3 text-sm">
-            {work.stage === "open" ? (
-              <>
-                <p>Accept a house only when every rule passes. A photo by itself is not enough.</p>
-                {visits.length === 0 ? <p className="text-quiet">No house yet.</p> : null}
-                {visits.map((visit) => {
-                  const gap = ruleGap(visit);
-                  const canAccept = rulePass(visit);
-                  return (
-                    <article key={visit.id} className="border border-rule bg-sheet p-3">
-                      <img src={visit.photo} alt="" className="mb-2 max-h-36 w-full object-cover" />
-                      <p className="font-medium">{visit.house}</p>
-                      <p className="text-quiet">Boil {visit.boil}, {visit.fuel}, water {visit.water}. {visit.shape === "kiosk" ? "Drum" : visit.shape === "house" ? "House filter" : "Shape not set"}. {visit.status}.</p>
-                      {gap ? <p className="mt-1 text-seal">{gap}</p> : null}
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                        <button type="button" disabled={!canAccept} onClick={() => mark(visit.id, "accepted")} className="min-h-11 bg-ink text-paper disabled:opacity-40">Accept</button>
-                        <button type="button" onClick={() => mark(visit.id, "returned")} className="min-h-11 border border-rule bg-paper">Send back</button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </>
-            ) : null}
+            <Ask who="check" />
+            {visits.length === 0 ? <p className="text-quiet">No house yet. The drum boy takes the photo.</p> : null}
+            {visits.map((visit) => {
+              const gap = ruleGap(visit);
+              const held = work.visitIds.includes(visit.id);
+              const canAccept = rulePass(visit) && !held;
+              return (
+                <article key={visit.id} className="border border-rule bg-sheet p-3">
+                  <img src={visit.photo} alt="" className="mb-2 max-h-36 w-full object-cover" />
+                  <p className="font-medium">{visit.house}</p>
+                  <p className="text-quiet">{visit.persons} people. {visit.fuel}. {visit.shape === "kiosk" ? "Drum" : "House filter"}, {visit.treatment}. {visit.status}.{held ? " Already in the description." : ""}</p>
+                  {gap && !held ? <p className="mt-1 text-seal">{gap}</p> : null}
+                  {held ? null : (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <button type="button" disabled={!canAccept} onClick={() => mark(visit.id, "accepted")} className="min-h-11 bg-ink text-paper disabled:opacity-40">Accept</button>
+                      <button type="button" onClick={() => mark(visit.id, "returned")} className="min-h-11 border border-rule bg-paper">Send back</button>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
             {work.stage === "described" ? (
               <>
                 <p>{work.name}. {locked.length} houses. {sampleTonnes} t.</p>
@@ -381,6 +387,7 @@ export function WorkDesk() {
 
         {role === "guardian" ? (
           <section className="mt-4 space-y-3 text-sm">
+            <Ask who="guardian" />
             <p>This page only lists policies on a Guardian you already run. There is no saved login here. Paste your own address and token, or open MGS and import the file there. Asking does not calculate and does not mint.</p>
             <p className="border border-rule bg-sheet p-3 break-all">
               {work.chain ? work.chain : "No chain yet. The developer locks the houses first."}
@@ -409,32 +416,10 @@ export function WorkDesk() {
           </section>
         ) : null}
 
-        {role === "verra" ? (
-          <section className="mt-4 space-y-3 text-sm">
-            <p>This page copies the request. It does not open the registry and it does not deposit a serial. Submit the copy yourself on the Project Hub.</p>
-            <button type="button" onClick={() => copy("verra", requestText)} className="min-h-12 w-full bg-ink font-medium text-paper">{copied === "verra" ? "Copied" : "Copy the packet"}</button>
-            <a href="https://verra.org/verra-project-hub/" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">Verra Project Hub</a>
-            <a href={POLICY.methodUrl} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center border border-rule bg-sheet">VMR0015 on Verra</a>
-          </section>
-        ) : null}
-
-        {role === "registry" ? (
+        {role === "business" ? (
           <section className="mt-4 max-w-xl space-y-3 text-sm">
-            <h1 className="font-serif text-3xl leading-none">Registry</h1>
-            <p>The public Verra registry is where a registered project and a VCU serial can be looked up. This demo has no project ID and no serial. Viewing the registry does not need a login. Registering a project, or asking Verra to issue, does. That account is Verra’s, not a login stored in this app.</p>
-            <p className="border border-rule bg-sheet p-3">{work.name || "No project name yet"}. {work.serial ? `Serial on this phone: ${work.serial}. It was not issued by Verra.` : "No serial copied from the registry yet."}</p>
-            <a href="https://registry.verra.org/verra" target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center bg-ink font-medium text-paper">
-              Open the Verra registry
-            </a>
-            <button type="button" onClick={() => setRole("buyer")} className="min-h-12 w-full border border-rule bg-sheet">
-              Then record a buyer
-            </button>
-          </section>
-        ) : null}
-
-        {role === "issue" ? (
-          <section className="mt-4 max-w-xl space-y-3 text-sm">
-            <h1 className="font-serif text-3xl leading-none">Issue</h1>
+            <Ask who="business" />
+            <h1 className="font-serif text-3xl leading-none">Business</h1>
             {work.stage === "issued" ? (
               <p className="border border-rule bg-sheet p-3">{work.name}. Issued {work.issuedSum} t on {work.issuedAt.slice(0, 10)}. {locked.length} houses, {POLICY.perHouse} t each.</p>
             ) : work.stage === "verified" ? (
@@ -445,16 +430,12 @@ export function WorkDesk() {
                 </button>
               </>
             ) : (
-              <p>Open Check and verify the monitoring note first.</p>
+              <p>The checker has not verified the monitoring note yet.</p>
             )}
           </section>
         ) : null}
 
-        {role === "markets" ? <Markets stage={work.stage} whole={work.issuedWhole} sum={work.issuedSum} /> : null}
-
-        {role === "paper" ? <Paper /> : null}
-
-        {role === "buyer" ? (
+        {role === "business" ? (
           <section className="mt-4 space-y-3 text-sm">
             <p>{work.name || "This project"}. {work.issuedSum || result.sum} t. Write who is taking them.</p>
             <label className="block">
